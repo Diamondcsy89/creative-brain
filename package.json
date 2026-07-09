@@ -1,0 +1,15 @@
+{
+  "name": "creative-brain",
+  "version": "2.0.0",
+  "private": true,
+  "packageManager": "pnpm@11.7.0",
+  "scripts": {
+    "dev": "pnpm --filter button-library dev",
+    "build": "turbo build",
+    "typecheck": "turbo typecheck",
+    "lint": "turbo lint"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.0"
+  }
+}

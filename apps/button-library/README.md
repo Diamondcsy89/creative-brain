@@ -1,4 +1,4 @@
-# App Motion Library 1.0
+# App Motion Library 1.1
 
 App Motion Library is a premium interaction reference for app buttons, AI product surfaces, commerce flows, and experimental interface systems.
 
@@ -12,10 +12,11 @@ App Motion Library is a premium interaction reference for app buttons, AI produc
 
 ## Information Architecture
 
-- Home page with category overview and static search/filter surface
+- Home page with category overview and clickable category filtering
 - Motion card grid driven by `data/motions.ts`
 - Detail pages at `/buttons/[slug]`
 - Preview rendering through `lib/motion-registry.tsx`
+- Copyable code placeholders on every detail page
 
 ## Categories
 

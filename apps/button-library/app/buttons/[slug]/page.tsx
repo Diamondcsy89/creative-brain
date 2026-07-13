@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { CopyCodeBlock } from "@/components/CopyCodeBlock";
 import { PreviewStage } from "@/components/PreviewStage";
 import { getMotionItem, motionItems } from "@/data/motions";
 
@@ -73,25 +74,35 @@ export default async function ButtonDetailPage({ params }: ButtonDetailPageProps
             <h2 className="text-lg font-medium text-white">Motion parameters</h2>
             <dl className="mt-4 space-y-3 text-sm text-white/50">
               <div className="flex justify-between gap-4">
-                <dt>Type</dt>
-                <dd className="text-right text-white/64">{item.motionType}</dd>
+                <dt>Interaction</dt>
+                <dd className="text-right text-white/64">{item.motion.interaction}</dd>
+              </div>
+              <div className="flex justify-between gap-4">
+                <dt>Hover</dt>
+                <dd className="text-right text-white/64">{item.motion.hover}</dd>
+              </div>
+              <div className="flex justify-between gap-4">
+                <dt>Press</dt>
+                <dd className="text-right text-white/64">{item.motion.press}</dd>
+              </div>
+              <div className="flex justify-between gap-4">
+                <dt>Spring</dt>
+                <dd className="text-right text-white/64">{item.motion.spring}</dd>
               </div>
               <div className="flex justify-between gap-4">
                 <dt>Duration</dt>
-                <dd className="text-white/64">180-420ms</dd>
+                <dd className="text-right text-white/64">{item.motion.duration}</dd>
               </div>
               <div className="flex justify-between gap-4">
-                <dt>Ease</dt>
-                <dd className="text-white/64">Spring / easeOut</dd>
+                <dt>Easing</dt>
+                <dd className="text-right text-white/64">{item.motion.easing}</dd>
               </div>
             </dl>
           </article>
 
           <article className="rounded-[28px] border border-white/[0.08] bg-white/[0.04] p-5">
-            <h2 className="text-lg font-medium text-white">Code placeholder</h2>
-            <pre className="mt-4 overflow-hidden rounded-2xl border border-white/[0.08] bg-black/28 p-4 text-xs leading-6 text-white/48">
-              {`<${item.componentName} />`}
-            </pre>
+            <h2 className="text-lg font-medium text-white">Code</h2>
+            <CopyCodeBlock code={item.code} />
             <p className="mt-4 text-sm leading-6 text-white/42">
               Production API and token extraction will be added in a later package pass.
             </p>

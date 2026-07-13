@@ -1,4 +1,4 @@
-import { LibraryCard } from "@/components/LibraryCard";
+import { LibraryExplorer } from "@/components/LibraryExplorer";
 import { categories, motionItems } from "@/data/motions";
 
 const featuredStats = [
@@ -15,7 +15,7 @@ export default function Home() {
           <div className="pointer-events-none absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-white/24 to-transparent" />
           <div className="grid gap-10 lg:grid-cols-[1fr_360px] lg:items-end">
             <div className="max-w-4xl">
-              <p className="text-xs font-medium uppercase tracking-[0.24em] text-white/38">Csyformiq / App Motion Library 1.0</p>
+              <p className="text-xs font-medium uppercase tracking-[0.24em] text-white/38">Csyformiq / App Motion Library 1.1</p>
               <h1 className="mt-5 max-w-4xl text-5xl font-semibold leading-[0.96] tracking-[-0.045em] text-white sm:text-7xl">
                 Premium motion patterns for app interfaces.
               </h1>
@@ -36,7 +36,7 @@ export default function Home() {
 
         <section className="grid gap-4 lg:grid-cols-[0.88fr_1.12fr]">
           <div className="rounded-[30px] border border-white/[0.08] bg-white/[0.04] p-5">
-            <p className="text-xs font-medium uppercase tracking-[0.2em] text-white/34">Static filter surface</p>
+            <p className="text-xs font-medium uppercase tracking-[0.2em] text-white/34">Search and filter surface</p>
             <div className="mt-5 rounded-full border border-white/[0.08] bg-black/24 px-4 py-3 text-sm text-white/42">
               Search by motion name, platform, tag...
             </div>
@@ -74,22 +74,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="space-y-5">
-          <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
-            <div>
-              <p className="text-xs font-medium uppercase tracking-[0.22em] text-white/34">Button card grid</p>
-              <h2 className="mt-3 text-3xl font-semibold tracking-[-0.035em] text-white">Browse the motion system.</h2>
-            </div>
-            <p className="max-w-md text-sm leading-6 text-white/44">
-              Each card opens a detail page with preview, usage notes, motion parameters, and a code placeholder.
-            </p>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {motionItems.map((item, index) => (
-              <LibraryCard key={item.slug} item={item} index={index} />
-            ))}
-          </div>
-        </section>
+        <LibraryExplorer categories={categories} items={motionItems} />
       </div>
     </main>
   );

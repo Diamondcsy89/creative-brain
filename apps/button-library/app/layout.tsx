@@ -2,8 +2,8 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "App Motion Button Library",
-  description: "A premium React, TypeScript, Tailwind CSS and Motion button animation library for apps."
+  title: "App Motion Library 1.0",
+  description: "A premium motion pattern library for app buttons, AI products, and refined product prototypes."
 };
 
 export const viewport: Viewport = {

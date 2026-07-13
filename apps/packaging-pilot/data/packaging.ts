@@ -18,13 +18,6 @@ export type InnerPackage = PackageDimension & {
 
 export type ReviewStatus = "Confirmed" | "Pending" | "Need Review";
 
-export type ChecklistItem = {
-  item: string;
-  content: string;
-  status: ReviewStatus;
-  note: string;
-};
-
 const assetBase = "/packaging/mi-gift-box";
 
 export const packaging = {
@@ -39,9 +32,11 @@ export const packaging = {
   heroStatus: "Pending Review",
   outerBoxSize: "30cm × 30cm × 8cm",
   nextAction: "等待平台审核反馈",
+  submissionNote: "用于小米商城会员限定随行礼盒包装提交审核，当前页面仅保留包装正侧面、内部物料、内托图占位和版本备注。",
   assets: {
     outerCover: `${assetBase}/outer-cover.jpg`,
     outerSide: `${assetBase}/outer-side.jpg`,
+    innerTrayLayout: `${assetBase}/inner-tray-layout.jpg`,
     reviewReference: `${assetBase}/review-reference.jpg`,
     eyeMask: `${assetBase}/inner-eye-mask.jpg`,
     neckPillow: `${assetBase}/inner-neck-pillow.jpg`,
@@ -123,62 +118,13 @@ export const packaging = {
     note: "四周预留包装取放和印刷审核边距",
     status: "Need Review" as ReviewStatus,
   },
-  checklist: [
-    {
-      item: "外包装封面",
-      content: "正面主视觉、产品名称、会员限定信息完整可见",
-      status: "Confirmed",
-      note: "已使用 outer-cover.jpg",
-    },
-    {
-      item: "小米 Logo",
-      content: "Logo 位置、比例与品牌识别清晰度",
-      status: "Need Review",
-      note: "等待平台品牌规范复核",
-    },
-    {
-      item: "产品名称文案",
-      content: "小米商城会员限定随行礼盒",
-      status: "Confirmed",
-      note: "页面与包装名称一致",
-    },
-    {
-      item: "外盒正面尺寸",
-      content: "宽 30cm × 高 30cm",
-      status: "Confirmed",
-      note: "已纳入工程标注",
-    },
-    {
-      item: "外盒侧面尺寸",
-      content: "宽 30cm × 高 8cm",
-      status: "Confirmed",
-      note: "已补充真实侧面图",
-    },
-    {
-      item: "内盒结构",
-      content: "三件套分区、边距与安全区",
-      status: "Need Review",
-      note: "V1.2 已重做比例化内托",
-    },
-    {
-      item: "内部三件套",
-      content: "眼罩、U 型枕、Xiaomi Tag 尺寸与位置",
-      status: "Confirmed",
-      note: "尺寸已集中在数据文件",
-    },
-    {
-      item: "印刷安全区",
-      content: "外盒与内托区域安全边距",
-      status: "Need Review",
-      note: "需平台输出最终印刷规范",
-    },
-    {
-      item: "版本信息",
-      content: "Packaging Review Page V1.2",
-      status: "Confirmed",
-      note: "当前为审核草稿",
-    },
-  ] satisfies ChecklistItem[],
+  innerTray: {
+    title: "内托平面布局图",
+    image: `${assetBase}/inner-tray-layout.jpg`,
+    hasImage: false,
+    placeholder: "待补充内托平面布局图",
+    note: "补充真实内托图后，页面将用于展示盒子打开后的内部排列关系。",
+  },
   reviewNotes: [
     {
       label: "当前版本",

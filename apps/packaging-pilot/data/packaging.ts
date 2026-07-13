@@ -121,9 +121,9 @@ export const packaging = {
   innerTray: {
     title: "内托平面布局图",
     image: `${assetBase}/inner-tray-layout.jpg`,
-    hasImage: false,
+    hasImage: true,
     placeholder: "待补充内托平面布局图",
-    note: "补充真实内托图后，页面将用于展示盒子打开后的内部排列关系。",
+    note: "真实内托平面布局图，用于展示盒子打开后的内部排列关系。",
   },
   reviewNotes: [
     {

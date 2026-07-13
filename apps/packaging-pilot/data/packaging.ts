@@ -5,6 +5,7 @@ export type PackageDimension = {
   heightCm: number;
   depthCm?: number;
   image?: string;
+  fileName?: string;
   note: string;
   usage: string;
   status: ReviewStatus;
@@ -31,9 +32,12 @@ export const packaging = {
   subtitle: "平台审核包装设计与产品包装展示",
   version: "V1.2",
   documentTitle: "Packaging Review Page",
+  projectType: "Packaging Review",
   reviewPurpose: "Platform Packaging Review",
   pageStatus: "Draft for Review",
-  reviewStatus: "Need Review" as ReviewStatus,
+  reviewStatus: "Pending" as ReviewStatus,
+  heroStatus: "Pending Review",
+  outerBoxSize: "30cm × 30cm × 8cm",
   nextAction: "等待平台审核反馈",
   assets: {
     outerCover: `${assetBase}/outer-cover.jpg`,
@@ -50,6 +54,7 @@ export const packaging = {
       widthCm: 30,
       heightCm: 30,
       image: `${assetBase}/outer-cover.jpg`,
+      fileName: "outer-cover.jpg",
       note: "主包装盒正面审核图",
       usage: "外盒正面封面展示",
       status: "Confirmed",
@@ -61,6 +66,7 @@ export const packaging = {
       widthCm: 30,
       heightCm: 8,
       image: `${assetBase}/outer-side.jpg`,
+      fileName: "outer-side.jpg",
       note: "主包装盒真实侧面图",
       usage: "外盒侧面结构展示",
       status: "Confirmed",
@@ -75,6 +81,7 @@ export const packaging = {
       heightCm: 15,
       depthCm: 2,
       image: `${assetBase}/inner-eye-mask.jpg`,
+      fileName: "inner-eye-mask.jpg",
       position: "左侧长盒",
       note: "扁平长盒，置于内托左侧主分区",
       usage: "内部物料包装审核",
@@ -88,6 +95,7 @@ export const packaging = {
       heightCm: 7.5,
       depthCm: 6,
       image: `${assetBase}/inner-neck-pillow.jpg`,
+      fileName: "inner-neck-pillow.jpg",
       position: "中部厚盒",
       note: "厚度最高，置于内托中部承重分区",
       usage: "内部物料包装审核",
@@ -101,6 +109,7 @@ export const packaging = {
       heightCm: 7.5,
       depthCm: 2,
       image: `${assetBase}/inner-xiaomi-tag.jpg`,
+      fileName: "inner-xiaomi-tag.jpg",
       position: "右侧小盒",
       note: "小方盒，置于右侧配件分区",
       usage: "内部物料包装审核",

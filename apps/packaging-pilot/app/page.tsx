@@ -1,4 +1,5 @@
 import Image from "next/image";
+import type { ReactNode } from "react";
 import { packaging, type InnerPackage, type PackageDimension, type ReviewStatus } from "@/data/packaging";
 
 function formatSize(item: PackageDimension) {
@@ -7,371 +8,404 @@ function formatSize(item: PackageDimension) {
 }
 
 const statusClassName: Record<ReviewStatus, string> = {
-  Confirmed: "border-emerald-200 bg-emerald-50 text-emerald-700",
-  Pending: "border-amber-200 bg-amber-50 text-amber-700",
-  "Need Review": "border-orange-200 bg-orange-50 text-orange-700",
+  Confirmed: "border-[#93C5A4] bg-[#F1F8F3] text-[#1F7A3D]",
+  Pending: "border-[#F6B35E] bg-[#FFF7EC] text-[#9A5200]",
+  "Need Review": "border-[#FF6900] bg-[#FFF2E8] text-[#B84900]",
 };
 
-function StatusBadge({ status }: { status: ReviewStatus }) {
+function StatusBadge({ status, label }: { status: ReviewStatus; label?: string }) {
   return (
-    <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${statusClassName[status]}`}>
-      {status}
+    <span className={`inline-flex rounded-[4px] border px-2 py-1 text-[11px] font-semibold ${statusClassName[status]}`}>
+      {label ?? status}
     </span>
   );
 }
 
 function SectionHeader({
-  eyebrow,
+  code,
   title,
   description,
 }: {
-  eyebrow: string;
+  code: string;
   title: string;
   description?: string;
 }) {
   return (
-    <div className="mb-7 flex items-end justify-between gap-8 border-b border-stone-200 pb-5">
+    <div className="mb-5 grid gap-3 border-b border-[#D8D8D8] pb-4 lg:grid-cols-[220px_1fr]">
+      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#FF6900]">{code}</p>
       <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-orange-600/70">{eyebrow}</p>
-        <h2 className="mt-3 text-3xl font-semibold tracking-[-0.035em] text-stone-950">{title}</h2>
+        <h2 className="text-2xl font-semibold tracking-[-0.02em] text-[#111111]">{title}</h2>
+        {description ? <p className="mt-2 max-w-3xl text-sm leading-6 text-[#666666]">{description}</p> : null}
       </div>
-      {description ? <p className="hidden max-w-lg text-sm leading-6 text-stone-500 lg:block">{description}</p> : null}
     </div>
   );
 }
 
-function DimensionCard({ item }: { item: PackageDimension }) {
-  const isSquare = item.widthCm === item.heightCm;
-  const previewWidth = Math.min(Math.max(item.widthCm * 8, 128), 270);
-  const previewHeight = Math.min(Math.max(item.heightCm * 8, 76), 270);
-
+function MetaRow({ label, value }: { label: string; value: string }) {
   return (
-    <article className="rounded-[22px] border border-stone-200 bg-white p-5 shadow-[0_16px_44px_rgba(40,32,20,0.055)]">
-      <div className="flex items-start justify-between gap-5">
+    <div className="grid grid-cols-[128px_1fr] border-b border-[#D8D8D8] text-sm last:border-b-0">
+      <span className="border-r border-[#D8D8D8] bg-[#F7F7F5] px-3 py-2 text-[#666666]">{label}</span>
+      <span className="px-3 py-2 font-medium text-[#111111]">{value}</span>
+    </div>
+  );
+}
+
+function GridPanel({ children, className = "" }: { children: ReactNode; className?: string }) {
+  return (
+    <div
+      className={`border border-[#CFCFCF] bg-white ${className}`}
+      style={{
+        backgroundImage:
+          "linear-gradient(#E9E9E7 1px, transparent 1px), linear-gradient(90deg, #E9E9E7 1px, transparent 1px)",
+        backgroundSize: "24px 24px",
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function DrawingFrame({ item, children }: { item: PackageDimension; children: React.ReactNode }) {
+  return (
+    <article className="border border-[#CFCFCF] bg-white">
+      <div className="flex items-center justify-between border-b border-[#D8D8D8] bg-[#F7F7F5] px-3 py-2">
         <div>
-          <p className="text-sm font-semibold text-stone-950">{item.name}</p>
-          <p className="mt-1 text-xs text-stone-500">{item.note}</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#666666]">{item.fileName}</p>
+          <p className="mt-1 text-sm font-semibold text-[#111111]">{item.name}</p>
         </div>
         <StatusBadge status={item.status} />
       </div>
-
-      <div className="mt-6 flex min-h-80 items-center justify-center overflow-hidden rounded-[18px] border border-stone-200 bg-[#f7f4ee] px-14 py-12">
-        <div
-          className="relative rounded-[12px] border border-stone-500/80 bg-white shadow-[0_14px_28px_rgba(40,32,20,0.08)]"
-          style={{ width: previewWidth, height: previewHeight }}
-        >
-          {item.image ? (
-            <Image
-              src={item.image}
-              alt={item.name}
-              width={900}
-              height={900}
-              className={isSquare ? "h-full w-full rounded-[11px] object-cover" : "h-full w-full rounded-[11px] object-cover"}
-            />
-          ) : null}
-          <div className="absolute -bottom-9 left-0 right-0 flex items-center gap-2">
-            <span className="h-3 w-px bg-stone-600" />
-            <span className="h-px flex-1 bg-stone-600" />
-            <span className="rounded-full border border-stone-300 bg-white px-2 py-0.5 text-[11px] font-semibold text-stone-700">
-              {item.widthCm}cm
-            </span>
-            <span className="h-px flex-1 bg-stone-600" />
-            <span className="h-3 w-px bg-stone-600" />
-          </div>
-          <div className="absolute -right-12 bottom-0 top-0 flex flex-col items-center gap-2">
-            <span className="h-px w-3 bg-stone-600" />
-            <span className="w-px flex-1 bg-stone-600" />
-            <span className="origin-center rotate-90 rounded-full border border-stone-300 bg-white px-2 py-0.5 text-[11px] font-semibold text-stone-700">
-              {item.heightCm}cm
-            </span>
-            <span className="w-px flex-1 bg-stone-600" />
-            <span className="h-px w-3 bg-stone-600" />
-          </div>
-        </div>
-      </div>
-      <div className="mt-5 grid grid-cols-2 gap-3 text-xs">
-        <div className="rounded-xl border border-stone-200 bg-stone-50 px-3 py-2">
-          <p className="text-stone-400">Size</p>
-          <p className="mt-1 font-semibold text-stone-800">{formatSize(item)}</p>
-        </div>
-        <div className="rounded-xl border border-stone-200 bg-stone-50 px-3 py-2">
-          <p className="text-stone-400">Version</p>
-          <p className="mt-1 font-semibold text-stone-800">{item.version}</p>
-        </div>
+      {children}
+      <div className="grid border-t border-[#D8D8D8] md:grid-cols-4">
+        <MetaRow label="用途" value={item.usage} />
+        <MetaRow label="尺寸" value={formatSize(item)} />
+        <MetaRow label="版本" value={item.version} />
+        <MetaRow label="状态" value={item.status} />
       </div>
     </article>
   );
 }
 
-function InnerTrayLayout({ items }: { items: InnerPackage[] }) {
-  const [eyeMask, neckPillow, xiaomiTag] = items;
+function DimensionDrawing({ item }: { item: PackageDimension }) {
+  const width = Math.min(Math.max(item.widthCm * 10, 140), 330);
+  const height = Math.min(Math.max(item.heightCm * 10, 80), 330);
+  const isOuterFront = item.id === "outer-front";
+  const isOuterSide = item.id === "outer-side";
 
   return (
-    <div className="rounded-[28px] border border-stone-200 bg-white p-6 shadow-[0_22px_70px_rgba(40,32,20,0.07)]">
-      <div className="mb-4 flex items-center justify-between gap-4">
+    <article className="border border-[#CFCFCF] bg-white">
+      <div className="flex items-center justify-between border-b border-[#D8D8D8] bg-[#F7F7F5] px-3 py-2">
         <div>
-          <p className="text-sm font-semibold text-stone-950">Inner tray engineering layout</p>
-          <p className="mt-1 text-xs text-stone-500">
-            {packaging.safetyZone.label} / {packaging.safetyZone.marginCm}cm / {packaging.safetyZone.note}
-          </p>
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#FF6900]">Dimension Drawing</p>
+          <h3 className="mt-1 text-base font-semibold text-[#111111]">{item.name}</h3>
+        </div>
+        <span className="text-sm font-semibold text-[#111111]">{formatSize(item)}</span>
+      </div>
+
+      <GridPanel className="flex min-h-[430px] items-center justify-center p-14">
+        <div className="relative" style={{ width, height }}>
+          <div className="absolute -top-8 left-0 right-0 flex items-center gap-2">
+            <span className="h-4 w-px bg-[#111111]" />
+            <span className="h-px flex-1 bg-[#111111]" />
+            <span className="border border-[#111111] bg-white px-2 py-0.5 text-xs font-semibold text-[#111111]">
+              W {item.widthCm}cm
+            </span>
+            <span className="h-px flex-1 bg-[#111111]" />
+            <span className="h-4 w-px bg-[#111111]" />
+          </div>
+          <div className="absolute -bottom-8 left-0 right-0 flex items-center gap-2">
+            <span className="h-4 w-px bg-[#111111]" />
+            <span className="h-px flex-1 bg-[#111111]" />
+            <span className="border border-[#111111] bg-white px-2 py-0.5 text-xs font-semibold text-[#111111]">
+              W {item.widthCm}cm
+            </span>
+            <span className="h-px flex-1 bg-[#111111]" />
+            <span className="h-4 w-px bg-[#111111]" />
+          </div>
+          <div className="absolute -left-10 bottom-0 top-0 flex flex-col items-center gap-2">
+            <span className="h-px w-4 bg-[#111111]" />
+            <span className="w-px flex-1 bg-[#111111]" />
+            <span className="-rotate-90 border border-[#111111] bg-white px-2 py-0.5 text-xs font-semibold text-[#111111]">
+              H {item.heightCm}cm
+            </span>
+            <span className="w-px flex-1 bg-[#111111]" />
+            <span className="h-px w-4 bg-[#111111]" />
+          </div>
+          <div className="absolute -right-10 bottom-0 top-0 flex flex-col items-center gap-2">
+            <span className="h-px w-4 bg-[#111111]" />
+            <span className="w-px flex-1 bg-[#111111]" />
+            <span className="-rotate-90 border border-[#111111] bg-white px-2 py-0.5 text-xs font-semibold text-[#111111]">
+              H {item.heightCm}cm
+            </span>
+            <span className="w-px flex-1 bg-[#111111]" />
+            <span className="h-px w-4 bg-[#111111]" />
+          </div>
+
+          <div className="relative h-full w-full border-2 border-[#111111] bg-white">
+            {item.image ? (
+              <Image src={item.image} alt={item.name} width={900} height={900} className="h-full w-full object-cover opacity-95" />
+            ) : null}
+            {isOuterFront ? (
+              <>
+                <div className="absolute left-[8%] right-[8%] top-[8%] h-[16%] border border-dashed border-[#FF6900] bg-white/45 px-2 py-1 text-xs font-semibold text-[#B84900]">
+                  Logo safe area
+                </div>
+                <div className="absolute bottom-[10%] left-[10%] right-[10%] h-[14%] border border-dashed border-[#FF6900] bg-white/45 px-2 py-1 text-xs font-semibold text-[#B84900]">
+                  Title safe area
+                </div>
+              </>
+            ) : null}
+            {isOuterSide ? (
+              <div className="absolute inset-x-[8%] top-1/2 border-t border-dashed border-[#FF6900]">
+                <span className="-mt-3 inline-block bg-white px-2 text-xs font-semibold text-[#B84900]">Side fold axis</span>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </GridPanel>
+    </article>
+  );
+}
+
+function InnerTrayPlan({ items }: { items: InnerPackage[] }) {
+  const totalWidth = items.reduce((sum, item) => sum + item.widthCm, 0);
+  const columns = items.map((item) => `${Math.max((item.widthCm / totalWidth) * 100, 18)}fr`).join(" ");
+
+  return (
+    <article className="border border-[#CFCFCF] bg-white">
+      <div className="flex items-center justify-between border-b border-[#D8D8D8] bg-[#F7F7F5] px-3 py-2">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#FF6900]">Inner Tray Plan</p>
+          <h3 className="mt-1 text-base font-semibold text-[#111111]">内托平面审核图</h3>
         </div>
         <StatusBadge status={packaging.safetyZone.status} />
       </div>
-      <div className="relative rounded-[24px] border border-stone-300 bg-[#eee8dc] p-8">
-        <div className="pointer-events-none absolute inset-4 rounded-[18px] border border-dashed border-red-400/60" />
-        <div className="pointer-events-none absolute left-8 top-4 rounded-full bg-[#eee8dc] px-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-red-600">
-          Safety margin
+
+      <GridPanel className="p-8">
+        <div className="relative border-2 border-[#111111] bg-[#F2F2F0] p-8">
+          <div className="pointer-events-none absolute inset-4 border border-dashed border-[#FF6900]" />
+          <div className="absolute left-6 top-3 bg-[#F2F2F0] px-2 text-xs font-semibold uppercase tracking-[0.14em] text-[#B84900]">
+            {packaging.safetyZone.label} / {packaging.safetyZone.marginCm}cm
+          </div>
+          <div className="absolute bottom-5 left-1/2 h-6 w-28 -translate-x-1/2 border border-dashed border-[#666666] bg-white/70 text-center text-[11px] font-semibold leading-6 text-[#666666]">
+            Pull handle
+          </div>
+          <div className="grid min-h-[440px] gap-4" style={{ gridTemplateColumns: columns }}>
+            {items.map((item) => (
+              <TrayCell key={item.id} item={item} />
+            ))}
+          </div>
         </div>
-        <div className="relative grid min-h-[520px] grid-cols-[1.45fr_0.9fr_0.58fr] gap-5">
-          <TraySlot item={eyeMask} emphasis="primary" />
-          <TraySlot item={neckPillow} emphasis="secondary" />
-          <TraySlot item={xiaomiTag} emphasis="compact" />
+      </GridPanel>
+    </article>
+  );
+}
+
+function TrayCell({ item }: { item: InnerPackage }) {
+  return (
+    <div className="relative flex flex-col justify-between border border-[#111111] bg-white p-3">
+      <span className="absolute left-2 top-2 size-3 border-l-2 border-t-2 border-[#FF6900]" />
+      <span className="absolute right-2 top-2 size-3 border-r-2 border-t-2 border-[#FF6900]" />
+      <span className="absolute bottom-2 left-2 size-3 border-b-2 border-l-2 border-[#FF6900]" />
+      <span className="absolute bottom-2 right-2 size-3 border-b-2 border-r-2 border-[#FF6900]" />
+
+      <div>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#666666]">{item.position}</p>
+        <h4 className="mt-2 text-base font-semibold leading-snug text-[#111111]">{item.name}</h4>
+      </div>
+      <div className="my-4 flex flex-1 items-center justify-center border border-[#D8D8D8] bg-[#F7F7F5] p-3">
+        {item.image ? <Image src={item.image} alt={item.name} width={700} height={500} className="max-h-44 w-full object-contain" /> : null}
+      </div>
+      <div className="space-y-2 border-t border-[#D8D8D8] pt-3 text-sm">
+        <div className="flex justify-between gap-3">
+          <span className="text-[#666666]">尺寸</span>
+          <span className="font-semibold text-[#111111]">{formatSize(item)}</span>
+        </div>
+        <div className="flex justify-between gap-3">
+          <span className="text-[#666666]">状态</span>
+          <span className="font-semibold text-[#111111]">{item.status}</span>
         </div>
       </div>
     </div>
   );
 }
 
-function TraySlot({
-  item,
-  emphasis,
-}: {
-  item: InnerPackage;
-  emphasis: "primary" | "secondary" | "compact";
-}) {
-  const imageClassName =
-    emphasis === "primary"
-      ? "max-h-[250px]"
-      : emphasis === "secondary"
-        ? "max-h-[180px]"
-        : "max-h-[130px]";
-
+function MaterialSpecCard({ item }: { item: InnerPackage }) {
   return (
-    <div className="relative flex min-h-[480px] flex-col justify-between overflow-hidden rounded-[18px] border border-stone-300 bg-[#f8f5ee] p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-400">{item.position}</p>
-          <h3 className="mt-2 text-base font-semibold text-stone-950">{item.name}</h3>
-        </div>
-        <StatusBadge status={item.status} />
+    <article className="flex min-h-[430px] flex-col border border-[#CFCFCF] bg-white">
+      <div className="border-b border-[#D8D8D8] bg-[#F7F7F5] px-3 py-2">
+        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#666666]">{item.fileName}</p>
+        <h3 className="mt-1 text-base font-semibold text-[#111111]">{item.name}</h3>
       </div>
-      <div className="my-5 flex flex-1 items-center justify-center rounded-[14px] border border-stone-200 bg-white p-4">
-        {item.image ? (
-          <Image
-            src={item.image}
-            alt={item.name}
-            width={700}
-            height={500}
-            className={`${imageClassName} w-full object-contain`}
-          />
-        ) : null}
+      <div className="flex flex-1 items-center justify-center border-b border-[#D8D8D8] bg-white p-5">
+        {item.image ? <Image src={item.image} alt={item.name} width={900} height={700} className="max-h-56 w-full object-contain" /> : null}
       </div>
-      <div className="grid gap-2 text-xs">
-        <div className="flex items-center justify-between rounded-xl border border-stone-200 bg-white px-3 py-2">
-          <span className="text-stone-500">尺寸</span>
-          <span className="font-semibold text-stone-900">{formatSize(item)}</span>
-        </div>
-        <div className="flex items-center justify-between rounded-xl border border-stone-200 bg-white px-3 py-2">
-          <span className="text-stone-500">状态</span>
-          <span className="font-semibold text-stone-900">{item.status}</span>
-        </div>
-      </div>
-      <span className="absolute left-3 top-3 size-4 border-l border-t border-red-500/70" />
-      <span className="absolute right-3 top-3 size-4 border-r border-t border-red-500/70" />
-      <span className="absolute bottom-3 left-3 size-4 border-b border-l border-red-500/70" />
-      <span className="absolute bottom-3 right-3 size-4 border-b border-r border-red-500/70" />
-    </div>
-  );
-}
-
-function MetaCell({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-xl border border-stone-200 bg-stone-50 px-3 py-2">
-      <p className="text-xs text-stone-400">{label}</p>
-      <p className="mt-1 text-sm font-semibold text-stone-900">{value}</p>
-    </div>
+      <MetaRow label="名称" value={item.name} />
+      <MetaRow label="尺寸" value={formatSize(item)} />
+      <MetaRow label="类型" value="Inner Pack" />
+      <MetaRow label="状态" value={item.status} />
+    </article>
   );
 }
 
 export default function PackagingPilotPage() {
+  const [outerFront, outerSide] = packaging.outerDimensions;
+
   return (
-    <main className="min-h-screen px-6 py-6 lg:px-10">
-      <div className="mx-auto max-w-[1440px]">
-        <header className="mb-6 grid grid-cols-[1fr_auto_auto] items-center gap-4 rounded-full border border-stone-200 bg-white px-5 py-3 text-sm shadow-[0_14px_40px_rgba(40,32,20,0.06)]">
-          <span className="font-semibold text-stone-950">Packaging Review Pilot</span>
-          <span className="hidden text-stone-500 md:inline">
+    <main className="min-h-screen bg-[#F7F7F5] px-6 py-6 text-[#111111] lg:px-10">
+      <div className="mx-auto max-w-[1480px]">
+        <header className="mb-5 grid grid-cols-[1fr_auto_auto] items-center gap-4 border border-[#CFCFCF] bg-white px-4 py-3 text-sm">
+          <span className="font-semibold">Xiaomi Packaging Review</span>
+          <span className="hidden text-[#666666] md:inline">
             {packaging.documentTitle} / {packaging.version}
           </span>
-          <StatusBadge status={packaging.reviewStatus} />
+          <StatusBadge status={packaging.reviewStatus} label={packaging.heroStatus} />
         </header>
 
-        <section className="overflow-hidden rounded-[36px] border border-stone-200 bg-white shadow-[0_34px_100px_rgba(40,32,20,0.1)]">
-          <div className="grid min-h-[680px] grid-cols-[0.86fr_1.14fr]">
-            <div className="flex flex-col justify-between p-12">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-orange-600/70">Xiaomi Member Limited Gift Box</p>
-                <h1 className="mt-6 max-w-2xl text-6xl font-semibold leading-[0.96] tracking-[-0.05em] text-stone-950">
-                  {packaging.productName}
-                </h1>
-                <p className="mt-6 max-w-xl text-base leading-8 text-stone-500">{packaging.subtitle}</p>
-              </div>
-              <div className="grid gap-3 text-sm text-stone-600">
-                {packaging.reviewNotes.map((note) => (
-                  <div key={note.label} className="flex items-center justify-between rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3">
-                    <span>{note.label}</span>
-                    <span className="font-medium text-stone-950">{note.value}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
+        <section className="grid border border-[#CFCFCF] bg-white lg:grid-cols-[0.86fr_1.14fr]">
+          <div className="border-b border-[#CFCFCF] p-8 lg:border-b-0 lg:border-r">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#FF6900]">MI COMMERCE / PACKAGING SUBMISSION</p>
+            <h1 className="mt-5 max-w-2xl text-5xl font-semibold leading-[1.02] tracking-[-0.035em] text-[#111111]">
+              {packaging.productName}
+            </h1>
+            <p className="mt-5 max-w-xl text-sm leading-7 text-[#666666]">{packaging.subtitle}</p>
 
-            <div className="grid grid-rows-[1fr_160px] gap-4 bg-[#f2eee5] p-8">
-              <div className="flex items-center justify-center">
-                <Image
-                  src={packaging.assets.outerCover}
-                  alt="小米商城会员限定随行礼盒外包装封面"
-                  width={1400}
-                  height={1400}
-                  priority
-                  className="max-h-[480px] w-auto rounded-[30px] object-cover shadow-[0_38px_90px_rgba(70,52,30,0.18)]"
-                />
-              </div>
-              <div className="flex items-center justify-center rounded-[24px] border border-stone-200 bg-white/60 p-5">
+            <div className="mt-8 border border-[#D8D8D8]">
+              <MetaRow label="项目名称" value={packaging.productName} />
+              <MetaRow label="类型" value={packaging.projectType} />
+              <MetaRow label="版本" value={packaging.version} />
+              <MetaRow label="状态" value={packaging.heroStatus} />
+              <MetaRow label="外盒尺寸" value={packaging.outerBoxSize} />
+            </div>
+          </div>
+
+          <GridPanel className="grid gap-4 p-6 lg:grid-cols-[1fr_0.78fr]">
+            <div className="flex min-h-[520px] items-center justify-center border border-[#111111] bg-white p-5">
+              <Image
+                src={packaging.assets.outerCover}
+                alt="小米商城会员限定随行礼盒外包装封面"
+                width={1400}
+                height={1400}
+                priority
+                className="max-h-[460px] w-auto object-cover"
+              />
+            </div>
+            <div className="flex flex-col justify-between gap-4">
+              <div className="flex min-h-[220px] items-center justify-center border border-[#111111] bg-white p-4">
                 <Image
                   src={packaging.assets.outerSide}
                   alt="小米商城会员限定随行礼盒外包装侧面"
                   width={1200}
                   height={320}
-                  className="h-full w-full rounded-[18px] object-cover shadow-[0_18px_44px_rgba(70,52,30,0.12)]"
+                  className="h-auto w-full object-cover"
                 />
               </div>
+              <div className="border border-[#D8D8D8] bg-white">
+                <MetaRow label="Front" value={formatSize(outerFront)} />
+                <MetaRow label="Side" value={formatSize(outerSide)} />
+                <MetaRow label="Purpose" value={packaging.reviewPurpose} />
+              </div>
             </div>
-          </div>
+          </GridPanel>
         </section>
 
-        <section className="py-20">
+        <section className="py-16">
           <SectionHeader
-            eyebrow="Outer Package"
-            title="外包装真实视图"
-            description="使用真实正面与真实侧面素材，用于平台审核包装完整性和版面一致性。"
+            code="A / OUTER PACKAGE"
+            title="外包装工程图框"
+            description="正面与侧面以设计稿审核面板呈现，保留文件名、尺寸、版本和审核状态。"
           />
-          <div className="grid items-stretch gap-5 lg:grid-cols-2">
+          <div className="grid gap-5 lg:grid-cols-2">
             {packaging.outerDimensions.map((item) => (
-              <article
-                key={item.id}
-                className="flex h-full flex-col rounded-[28px] border border-stone-200 bg-white p-5 shadow-[0_22px_64px_rgba(40,32,20,0.075)]"
-              >
-                <div className="flex min-h-[420px] flex-1 items-center justify-center rounded-[22px] border border-stone-200 bg-[#f7f4ee] p-6">
+              <DrawingFrame key={item.id} item={item}>
+                <GridPanel className="flex min-h-[440px] items-center justify-center p-8">
                   {item.image ? (
                     <Image
                       src={item.image}
                       alt={item.name}
                       width={1200}
                       height={1200}
-                      className={
-                        item.id === "outer-front"
-                          ? "max-h-[360px] w-auto rounded-[16px] object-cover shadow-[0_18px_44px_rgba(40,32,20,0.10)]"
-                          : "max-h-[170px] w-full rounded-[16px] object-cover shadow-[0_18px_44px_rgba(40,32,20,0.10)]"
-                      }
+                      className={item.id === "outer-front" ? "max-h-[340px] w-auto border border-[#111111] object-cover" : "max-h-[150px] w-full border border-[#111111] object-cover"}
                     />
                   ) : null}
-                </div>
-                <div className="mt-5 grid gap-3 text-sm">
-                  <div className="flex items-center justify-between gap-4">
-                    <p className="font-semibold text-stone-950">{item.name}</p>
-                    <StatusBadge status={item.status} />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <MetaCell label="图片用途" value={item.usage} />
-                    <MetaCell label="尺寸" value={formatSize(item)} />
-                    <MetaCell label="版本" value={item.version} />
-                    <MetaCell label="审核状态" value={item.status} />
-                  </div>
-                </div>
-              </article>
+                </GridPanel>
+              </DrawingFrame>
             ))}
           </div>
         </section>
 
-        <section className="py-8">
+        <section className="py-6">
           <SectionHeader
-            eyebrow="Dimensions"
+            code="B / DIMENSION"
             title="尺寸标注总览"
-            description="外盒与内部小盒尺寸均来自 data/packaging.ts，页面仅负责可视化。"
+            description="统一使用工程标注样式，包含外盒正面、外盒侧面与三个内部小盒的宽高厚信息。"
           />
           <div className="grid gap-5 xl:grid-cols-2">
             {packaging.outerDimensions.map((item) => (
-              <DimensionCard key={item.id} item={item} />
+              <DimensionDrawing key={item.id} item={item} />
             ))}
             {packaging.innerItems.map((item) => (
-              <DimensionCard key={item.id} item={item} />
+              <DimensionDrawing key={item.id} item={item} />
             ))}
           </div>
         </section>
 
-        <section className="py-20">
+        <section className="py-16">
           <SectionHeader
-            eyebrow="Inner Tray"
-            title="内盒比例化结构"
-            description="根据三个内部小盒的宽高厚数据进行比例化排布，突出大小关系与内托分区逻辑。"
+            code="C / INNER TRAY"
+            title="内托平面结构"
+            description="以浅灰底板和细线框表达三件套的比例关系、边距、安全区与开孔位置。"
           />
-          <InnerTrayLayout items={packaging.innerItems} />
+          <InnerTrayPlan items={packaging.innerItems} />
         </section>
 
-        <section className="py-8">
-          <SectionHeader eyebrow="Materials" title="内部物料与真实尺寸" />
+        <section className="py-6">
+          <SectionHeader code="D / INNER PACK" title="内部物料规格板" />
           <div className="grid gap-5 lg:grid-cols-3">
             {packaging.innerItems.map((item) => (
-              <article key={item.id} className="rounded-[30px] border border-stone-200 bg-white p-5 shadow-[0_22px_60px_rgba(40,32,20,0.07)]">
-                {item.image ? <Image src={item.image} alt={item.name} width={900} height={700} className="aspect-[4/3] w-full rounded-[22px] object-contain" /> : null}
-                <p className="mt-5 text-base font-semibold text-stone-950">{item.name}</p>
-                <p className="mt-2 text-sm text-stone-500">{formatSize(item)}</p>
-              </article>
+              <MaterialSpecCard key={item.id} item={item} />
             ))}
           </div>
         </section>
 
-        <section className="grid gap-5 py-20 lg:grid-cols-[0.9fr_1.1fr]">
-          <article className="rounded-[28px] border border-stone-200 bg-white p-6 shadow-[0_24px_70px_rgba(40,32,20,0.08)] lg:col-span-2">
-            <SectionHeader eyebrow="Checklist" title="正式审核表格" />
-            <div className="overflow-hidden rounded-[18px] border border-stone-200">
-              <table className="w-full border-collapse text-left text-sm">
-                <thead className="bg-stone-100 text-xs uppercase tracking-[0.16em] text-stone-500">
-                  <tr>
-                    <th className="w-[18%] px-4 py-4 font-semibold">审核项</th>
-                    <th className="w-[34%] px-4 py-4 font-semibold">检查内容</th>
-                    <th className="w-[16%] px-4 py-4 font-semibold">状态</th>
-                    <th className="px-4 py-4 font-semibold">备注</th>
+        <section className="py-16">
+          <SectionHeader code="E / CHECKLIST" title="平台审核表格" />
+          <div className="overflow-hidden border border-[#CFCFCF] bg-white">
+            <table className="w-full border-collapse text-left text-sm">
+              <thead className="bg-[#F7F7F5] text-xs uppercase tracking-[0.14em] text-[#666666]">
+                <tr>
+                  <th className="w-[18%] border-b border-r border-[#D8D8D8] px-4 py-3 font-semibold">审核项</th>
+                  <th className="w-[34%] border-b border-r border-[#D8D8D8] px-4 py-3 font-semibold">检查内容</th>
+                  <th className="w-[16%] border-b border-r border-[#D8D8D8] px-4 py-3 font-semibold">状态</th>
+                  <th className="border-b border-[#D8D8D8] px-4 py-3 font-semibold">备注</th>
+                </tr>
+              </thead>
+              <tbody>
+                {packaging.checklist.map((row) => (
+                  <tr key={row.item}>
+                    <td className="border-b border-r border-[#D8D8D8] px-4 py-3 font-semibold text-[#111111]">{row.item}</td>
+                    <td className="border-b border-r border-[#D8D8D8] px-4 py-3 leading-6 text-[#666666]">{row.content}</td>
+                    <td className="border-b border-r border-[#D8D8D8] px-4 py-3">
+                      <StatusBadge status={row.status} />
+                    </td>
+                    <td className="border-b border-[#D8D8D8] px-4 py-3 leading-6 text-[#666666]">{row.note}</td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-stone-200 bg-white">
-                  {packaging.checklist.map((row) => (
-                    <tr key={row.item}>
-                      <td className="px-4 py-4 font-semibold text-stone-950">{row.item}</td>
-                      <td className="px-4 py-4 leading-6 text-stone-600">{row.content}</td>
-                      <td className="px-4 py-4">
-                        <StatusBadge status={row.status} />
-                      </td>
-                      <td className="px-4 py-4 leading-6 text-stone-500">{row.note}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </article>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
 
-          <article className="rounded-[28px] border border-stone-200 bg-white p-8 shadow-[0_24px_70px_rgba(40,32,20,0.08)] lg:col-span-2">
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-orange-600/70">Review Notes</p>
-            <h2 className="mt-3 text-3xl font-semibold tracking-[-0.035em] text-stone-950">审核备注区</h2>
-            <div className="mt-8 grid gap-4 md:grid-cols-4">
-              {packaging.reviewNotes.map((note) => (
-                <div key={note.label} className="rounded-2xl border border-stone-200 bg-stone-50 p-4">
-                  <p className="text-xs uppercase tracking-[0.18em] text-stone-400">{note.label}</p>
-                  <p className="mt-3 text-sm font-semibold leading-6 text-stone-900">{note.value}</p>
-                </div>
-              ))}
-            </div>
-          </article>
+        <section className="pb-16">
+          <SectionHeader code="F / REVIEW NOTES" title="审核记录面板" />
+          <div className="grid border border-[#CFCFCF] bg-white md:grid-cols-4">
+            {packaging.reviewNotes.map((note) => (
+              <div key={note.label} className="border-b border-r border-[#D8D8D8] p-4 last:border-r-0 md:border-b-0">
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#666666]">{note.label}</p>
+                <p className="mt-3 text-base font-semibold text-[#111111]">{note.value}</p>
+              </div>
+            ))}
+          </div>
         </section>
       </div>
     </main>

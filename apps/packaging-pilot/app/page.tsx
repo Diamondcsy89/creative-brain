@@ -1,9 +1,23 @@
 import Image from "next/image";
-import { packaging, type InnerPackage, type PackageDimension } from "@/data/packaging";
+import { packaging, type InnerPackage, type PackageDimension, type ReviewStatus } from "@/data/packaging";
 
 function formatSize(item: PackageDimension) {
   const base = `${item.widthCm}cm × ${item.heightCm}cm`;
   return item.depthCm ? `${base} × ${item.depthCm}cm` : base;
+}
+
+const statusClassName: Record<ReviewStatus, string> = {
+  Confirmed: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  Pending: "border-amber-200 bg-amber-50 text-amber-700",
+  "Need Review": "border-orange-200 bg-orange-50 text-orange-700",
+};
+
+function StatusBadge({ status }: { status: ReviewStatus }) {
+  return (
+    <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${statusClassName[status]}`}>
+      {status}
+    </span>
+  );
 }
 
 function SectionHeader({
@@ -28,22 +42,22 @@ function SectionHeader({
 
 function DimensionCard({ item }: { item: PackageDimension }) {
   const isSquare = item.widthCm === item.heightCm;
-  const previewWidth = Math.min(Math.max(item.widthCm * 9, 120), 280);
-  const previewHeight = Math.min(Math.max(item.heightCm * 9, 72), 280);
+  const previewWidth = Math.min(Math.max(item.widthCm * 8, 128), 270);
+  const previewHeight = Math.min(Math.max(item.heightCm * 8, 76), 270);
 
   return (
-    <article className="rounded-[26px] border border-stone-200 bg-white p-5 shadow-[0_18px_50px_rgba(40,32,20,0.06)]">
+    <article className="rounded-[22px] border border-stone-200 bg-white p-5 shadow-[0_16px_44px_rgba(40,32,20,0.055)]">
       <div className="flex items-start justify-between gap-5">
         <div>
           <p className="text-sm font-semibold text-stone-950">{item.name}</p>
           <p className="mt-1 text-xs text-stone-500">{item.note}</p>
         </div>
-        <span className="rounded-full bg-orange-50 px-3 py-1 text-xs font-medium text-orange-700">{formatSize(item)}</span>
+        <StatusBadge status={item.status} />
       </div>
 
-      <div className="mt-8 flex min-h-80 items-center justify-center overflow-hidden rounded-[22px] bg-[#f6f1e8] p-10">
+      <div className="mt-6 flex min-h-80 items-center justify-center overflow-hidden rounded-[18px] border border-stone-200 bg-[#f7f4ee] px-14 py-12">
         <div
-          className="relative rounded-[18px] border border-stone-400/70 bg-white shadow-[0_18px_36px_rgba(40,32,20,0.08)]"
+          className="relative rounded-[12px] border border-stone-500/80 bg-white shadow-[0_14px_28px_rgba(40,32,20,0.08)]"
           style={{ width: previewWidth, height: previewHeight }}
         >
           {item.image ? (
@@ -52,19 +66,37 @@ function DimensionCard({ item }: { item: PackageDimension }) {
               alt={item.name}
               width={900}
               height={900}
-              className={isSquare ? "h-full w-full rounded-[17px] object-cover" : "h-full w-full rounded-[17px] object-cover"}
+              className={isSquare ? "h-full w-full rounded-[11px] object-cover" : "h-full w-full rounded-[11px] object-cover"}
             />
           ) : null}
-          <div className="absolute -bottom-8 left-0 right-0 flex items-center gap-2">
-            <span className="h-px flex-1 bg-stone-500" />
-            <span className="whitespace-nowrap text-[11px] font-medium text-stone-600">{item.widthCm}cm</span>
-            <span className="h-px flex-1 bg-stone-500" />
+          <div className="absolute -bottom-9 left-0 right-0 flex items-center gap-2">
+            <span className="h-3 w-px bg-stone-600" />
+            <span className="h-px flex-1 bg-stone-600" />
+            <span className="rounded-full border border-stone-300 bg-white px-2 py-0.5 text-[11px] font-semibold text-stone-700">
+              {item.widthCm}cm
+            </span>
+            <span className="h-px flex-1 bg-stone-600" />
+            <span className="h-3 w-px bg-stone-600" />
           </div>
-          <div className="absolute -right-10 bottom-0 top-0 flex flex-col items-center gap-2">
-            <span className="w-px flex-1 bg-stone-500" />
-            <span className="origin-center rotate-90 whitespace-nowrap text-[11px] font-medium text-stone-600">{item.heightCm}cm</span>
-            <span className="w-px flex-1 bg-stone-500" />
+          <div className="absolute -right-12 bottom-0 top-0 flex flex-col items-center gap-2">
+            <span className="h-px w-3 bg-stone-600" />
+            <span className="w-px flex-1 bg-stone-600" />
+            <span className="origin-center rotate-90 rounded-full border border-stone-300 bg-white px-2 py-0.5 text-[11px] font-semibold text-stone-700">
+              {item.heightCm}cm
+            </span>
+            <span className="w-px flex-1 bg-stone-600" />
+            <span className="h-px w-3 bg-stone-600" />
           </div>
+        </div>
+      </div>
+      <div className="mt-5 grid grid-cols-2 gap-3 text-xs">
+        <div className="rounded-xl border border-stone-200 bg-stone-50 px-3 py-2">
+          <p className="text-stone-400">Size</p>
+          <p className="mt-1 font-semibold text-stone-800">{formatSize(item)}</p>
+        </div>
+        <div className="rounded-xl border border-stone-200 bg-stone-50 px-3 py-2">
+          <p className="text-stone-400">Version</p>
+          <p className="mt-1 font-semibold text-stone-800">{item.version}</p>
         </div>
       </div>
     </article>
@@ -72,18 +104,28 @@ function DimensionCard({ item }: { item: PackageDimension }) {
 }
 
 function InnerTrayLayout({ items }: { items: InnerPackage[] }) {
-  const maxWidth = Math.max(...items.map((item) => item.widthCm));
-  const maxHeight = Math.max(...items.map((item) => item.heightCm));
+  const [eyeMask, neckPillow, xiaomiTag] = items;
 
   return (
-    <div className="rounded-[34px] border border-stone-200 bg-white p-6 shadow-[0_22px_70px_rgba(40,32,20,0.07)]">
-      <div className="rounded-[28px] bg-[#eee7dc] p-5">
-        <div className="grid h-[460px] grid-cols-[1.15fr_0.78fr] gap-5">
-          <div className="grid grid-rows-[1fr_0.55fr] gap-5">
-            <TraySlot item={items[0]} maxWidth={maxWidth} maxHeight={maxHeight} />
-            <TraySlot item={items[1]} maxWidth={maxWidth} maxHeight={maxHeight} />
-          </div>
-          <TraySlot item={items[2]} maxWidth={maxWidth} maxHeight={maxHeight} />
+    <div className="rounded-[28px] border border-stone-200 bg-white p-6 shadow-[0_22px_70px_rgba(40,32,20,0.07)]">
+      <div className="mb-4 flex items-center justify-between gap-4">
+        <div>
+          <p className="text-sm font-semibold text-stone-950">Inner tray engineering layout</p>
+          <p className="mt-1 text-xs text-stone-500">
+            {packaging.safetyZone.label} / {packaging.safetyZone.marginCm}cm / {packaging.safetyZone.note}
+          </p>
+        </div>
+        <StatusBadge status={packaging.safetyZone.status} />
+      </div>
+      <div className="relative rounded-[24px] border border-stone-300 bg-[#eee8dc] p-8">
+        <div className="pointer-events-none absolute inset-4 rounded-[18px] border border-dashed border-red-400/60" />
+        <div className="pointer-events-none absolute left-8 top-4 rounded-full bg-[#eee8dc] px-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-red-600">
+          Safety margin
+        </div>
+        <div className="relative grid min-h-[520px] grid-cols-[1.45fr_0.9fr_0.58fr] gap-5">
+          <TraySlot item={eyeMask} emphasis="primary" />
+          <TraySlot item={neckPillow} emphasis="secondary" />
+          <TraySlot item={xiaomiTag} emphasis="compact" />
         </div>
       </div>
     </div>
@@ -92,31 +134,61 @@ function InnerTrayLayout({ items }: { items: InnerPackage[] }) {
 
 function TraySlot({
   item,
-  maxWidth,
-  maxHeight,
+  emphasis,
 }: {
   item: InnerPackage;
-  maxWidth: number;
-  maxHeight: number;
+  emphasis: "primary" | "secondary" | "compact";
 }) {
-  const widthPercent = 58 + (item.widthCm / maxWidth) * 34;
-  const heightPercent = 42 + (item.heightCm / maxHeight) * 38;
+  const imageClassName =
+    emphasis === "primary"
+      ? "max-h-[250px]"
+      : emphasis === "secondary"
+        ? "max-h-[180px]"
+        : "max-h-[130px]";
 
   return (
-    <div className="relative flex items-center justify-center rounded-[26px] border border-stone-300/70 bg-white/70 p-4">
-      <span className="absolute left-4 top-4 text-xs font-medium uppercase tracking-[0.18em] text-stone-400">{item.position}</span>
-      <div
-        className="flex flex-col justify-between rounded-[20px] border border-stone-300 bg-white p-3 shadow-[0_16px_36px_rgba(40,32,20,0.08)]"
-        style={{ width: `${widthPercent}%`, height: `${heightPercent}%` }}
-      >
+    <div className="relative flex min-h-[480px] flex-col justify-between overflow-hidden rounded-[18px] border border-stone-300 bg-[#f8f5ee] p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-400">{item.position}</p>
+          <h3 className="mt-2 text-base font-semibold text-stone-950">{item.name}</h3>
+        </div>
+        <StatusBadge status={item.status} />
+      </div>
+      <div className="my-5 flex flex-1 items-center justify-center rounded-[14px] border border-stone-200 bg-white p-4">
         {item.image ? (
-          <Image src={item.image} alt={item.name} width={700} height={500} className="min-h-0 flex-1 rounded-[14px] object-contain" />
+          <Image
+            src={item.image}
+            alt={item.name}
+            width={700}
+            height={500}
+            className={`${imageClassName} w-full object-contain`}
+          />
         ) : null}
-        <div className="pt-2">
-          <p className="text-sm font-semibold text-stone-900">{item.name}</p>
-          <p className="mt-1 text-xs text-stone-500">{formatSize(item)}</p>
+      </div>
+      <div className="grid gap-2 text-xs">
+        <div className="flex items-center justify-between rounded-xl border border-stone-200 bg-white px-3 py-2">
+          <span className="text-stone-500">尺寸</span>
+          <span className="font-semibold text-stone-900">{formatSize(item)}</span>
+        </div>
+        <div className="flex items-center justify-between rounded-xl border border-stone-200 bg-white px-3 py-2">
+          <span className="text-stone-500">状态</span>
+          <span className="font-semibold text-stone-900">{item.status}</span>
         </div>
       </div>
+      <span className="absolute left-3 top-3 size-4 border-l border-t border-red-500/70" />
+      <span className="absolute right-3 top-3 size-4 border-r border-t border-red-500/70" />
+      <span className="absolute bottom-3 left-3 size-4 border-b border-l border-red-500/70" />
+      <span className="absolute bottom-3 right-3 size-4 border-b border-r border-red-500/70" />
+    </div>
+  );
+}
+
+function MetaCell({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-stone-200 bg-stone-50 px-3 py-2">
+      <p className="text-xs text-stone-400">{label}</p>
+      <p className="mt-1 text-sm font-semibold text-stone-900">{value}</p>
     </div>
   );
 }
@@ -127,8 +199,10 @@ export default function PackagingPilotPage() {
       <div className="mx-auto max-w-[1440px]">
         <header className="mb-6 grid grid-cols-[1fr_auto_auto] items-center gap-4 rounded-full border border-stone-200 bg-white px-5 py-3 text-sm shadow-[0_14px_40px_rgba(40,32,20,0.06)]">
           <span className="font-semibold text-stone-950">Packaging Review Pilot</span>
-          <span className="hidden text-stone-500 md:inline">{packaging.version}</span>
-          <span className="rounded-full bg-orange-50 px-3 py-1 text-xs font-medium text-orange-700">{packaging.reviewStatus}</span>
+          <span className="hidden text-stone-500 md:inline">
+            {packaging.documentTitle} / {packaging.version}
+          </span>
+          <StatusBadge status={packaging.reviewStatus} />
         </header>
 
         <section className="overflow-hidden rounded-[36px] border border-stone-200 bg-white shadow-[0_34px_100px_rgba(40,32,20,0.1)]">
@@ -142,10 +216,10 @@ export default function PackagingPilotPage() {
                 <p className="mt-6 max-w-xl text-base leading-8 text-stone-500">{packaging.subtitle}</p>
               </div>
               <div className="grid gap-3 text-sm text-stone-600">
-                {packaging.outerDimensions.map((item) => (
-                  <div key={item.id} className="flex items-center justify-between rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3">
-                    <span>{item.name}</span>
-                    <span className="font-medium text-stone-950">{formatSize(item)}</span>
+                {packaging.reviewNotes.map((note) => (
+                  <div key={note.label} className="flex items-center justify-between rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3">
+                    <span>{note.label}</span>
+                    <span className="font-medium text-stone-950">{note.value}</span>
                   </div>
                 ))}
               </div>
@@ -181,21 +255,38 @@ export default function PackagingPilotPage() {
             title="外包装真实视图"
             description="使用真实正面与真实侧面素材，用于平台审核包装完整性和版面一致性。"
           />
-          <div className="grid grid-cols-[1fr_0.86fr] gap-5">
+          <div className="grid items-stretch gap-5 lg:grid-cols-2">
             {packaging.outerDimensions.map((item) => (
-              <article key={item.id} className="rounded-[32px] border border-stone-200 bg-white p-5 shadow-[0_24px_70px_rgba(40,32,20,0.08)]">
-                {item.image ? (
-                  <Image
-                    src={item.image}
-                    alt={item.name}
-                    width={1200}
-                    height={1200}
-                    className={item.id === "outer-front" ? "aspect-square w-full rounded-[24px] object-cover" : "h-[220px] w-full rounded-[24px] object-cover"}
-                  />
-                ) : null}
-                <div className="mt-4 flex items-center justify-between">
-                  <p className="text-sm font-medium text-stone-700">{item.name}</p>
-                  <p className="text-sm text-stone-500">{formatSize(item)}</p>
+              <article
+                key={item.id}
+                className="flex h-full flex-col rounded-[28px] border border-stone-200 bg-white p-5 shadow-[0_22px_64px_rgba(40,32,20,0.075)]"
+              >
+                <div className="flex min-h-[420px] flex-1 items-center justify-center rounded-[22px] border border-stone-200 bg-[#f7f4ee] p-6">
+                  {item.image ? (
+                    <Image
+                      src={item.image}
+                      alt={item.name}
+                      width={1200}
+                      height={1200}
+                      className={
+                        item.id === "outer-front"
+                          ? "max-h-[360px] w-auto rounded-[16px] object-cover shadow-[0_18px_44px_rgba(40,32,20,0.10)]"
+                          : "max-h-[170px] w-full rounded-[16px] object-cover shadow-[0_18px_44px_rgba(40,32,20,0.10)]"
+                      }
+                    />
+                  ) : null}
+                </div>
+                <div className="mt-5 grid gap-3 text-sm">
+                  <div className="flex items-center justify-between gap-4">
+                    <p className="font-semibold text-stone-950">{item.name}</p>
+                    <StatusBadge status={item.status} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <MetaCell label="图片用途" value={item.usage} />
+                    <MetaCell label="尺寸" value={formatSize(item)} />
+                    <MetaCell label="版本" value={item.version} />
+                    <MetaCell label="审核状态" value={item.status} />
+                  </div>
                 </div>
               </article>
             ))}
@@ -241,26 +332,42 @@ export default function PackagingPilotPage() {
         </section>
 
         <section className="grid gap-5 py-20 lg:grid-cols-[0.9fr_1.1fr]">
-          <article className="rounded-[34px] border border-stone-200 bg-white p-8 shadow-[0_24px_70px_rgba(40,32,20,0.08)]">
-            <SectionHeader eyebrow="Checklist" title="审核 checklist" />
-            <div className="grid gap-3 sm:grid-cols-2">
-              {packaging.checklist.map((item) => (
-                <div key={item} className="flex items-center gap-3 rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3">
-                  <span className="size-2 rounded-full bg-orange-500" />
-                  <span className="text-sm font-medium text-stone-700">{item}</span>
-                </div>
-              ))}
+          <article className="rounded-[28px] border border-stone-200 bg-white p-6 shadow-[0_24px_70px_rgba(40,32,20,0.08)] lg:col-span-2">
+            <SectionHeader eyebrow="Checklist" title="正式审核表格" />
+            <div className="overflow-hidden rounded-[18px] border border-stone-200">
+              <table className="w-full border-collapse text-left text-sm">
+                <thead className="bg-stone-100 text-xs uppercase tracking-[0.16em] text-stone-500">
+                  <tr>
+                    <th className="w-[18%] px-4 py-4 font-semibold">审核项</th>
+                    <th className="w-[34%] px-4 py-4 font-semibold">检查内容</th>
+                    <th className="w-[16%] px-4 py-4 font-semibold">状态</th>
+                    <th className="px-4 py-4 font-semibold">备注</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-stone-200 bg-white">
+                  {packaging.checklist.map((row) => (
+                    <tr key={row.item}>
+                      <td className="px-4 py-4 font-semibold text-stone-950">{row.item}</td>
+                      <td className="px-4 py-4 leading-6 text-stone-600">{row.content}</td>
+                      <td className="px-4 py-4">
+                        <StatusBadge status={row.status} />
+                      </td>
+                      <td className="px-4 py-4 leading-6 text-stone-500">{row.note}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </article>
 
-          <article className="rounded-[34px] border border-stone-200 bg-[#1d1b18] p-8 text-white shadow-[0_24px_70px_rgba(40,32,20,0.14)]">
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-orange-300/70">Review Notes</p>
-            <h2 className="mt-3 text-3xl font-semibold tracking-[-0.035em]">审核备注区</h2>
-            <div className="mt-8 space-y-4">
+          <article className="rounded-[28px] border border-stone-200 bg-white p-8 shadow-[0_24px_70px_rgba(40,32,20,0.08)] lg:col-span-2">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-orange-600/70">Review Notes</p>
+            <h2 className="mt-3 text-3xl font-semibold tracking-[-0.035em] text-stone-950">审核备注区</h2>
+            <div className="mt-8 grid gap-4 md:grid-cols-4">
               {packaging.reviewNotes.map((note) => (
-                <div key={note.label} className="rounded-2xl border border-white/10 bg-white/[0.045] p-4">
-                  <p className="text-xs uppercase tracking-[0.18em] text-white/38">{note.label}</p>
-                  <p className="mt-3 text-sm leading-6 text-white/72">{note.value}</p>
+                <div key={note.label} className="rounded-2xl border border-stone-200 bg-stone-50 p-4">
+                  <p className="text-xs uppercase tracking-[0.18em] text-stone-400">{note.label}</p>
+                  <p className="mt-3 text-sm font-semibold leading-6 text-stone-900">{note.value}</p>
                 </div>
               ))}
             </div>

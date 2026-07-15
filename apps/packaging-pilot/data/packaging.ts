@@ -41,6 +41,7 @@ export const packaging = {
     dimensionSchematic: "本区域为尺寸比例示意，标注线对应规格矩形，不对应图片裁切边界。",
     innerTray: "用于确认礼盒打开后的内部摆放结构。",
     materials: "用于确认随行礼盒内三件物料包装图与尺寸。",
+    thicknessSchematic: "厚度示意为规格关系图，不代表真实侧面包装渲染。",
   },
   assets: {
     heroOverview: `${assetBase}/hero-overview.jpg`,

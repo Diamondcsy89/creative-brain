@@ -1,6 +1,7 @@
 export type PackageDimension = {
   id: string;
   name: string;
+  marker?: string;
   widthCm: number;
   heightCm: number;
   depthCm?: number;
@@ -23,7 +24,7 @@ const assetBase = "/packaging/mi-gift-box";
 export const packaging = {
   productName: "小米商城会员限定随行礼盒",
   subtitle: "平台审核包装设计与产品包装展示",
-  version: "V1.2",
+  version: "V1.4",
   documentTitle: "Packaging Review Page",
   projectType: "Packaging Review",
   reviewPurpose: "Platform Packaging Review",
@@ -32,7 +33,13 @@ export const packaging = {
   heroStatus: "Pending Review",
   outerBoxSize: "30cm × 30cm × 8cm",
   nextAction: "等待平台审核反馈",
-  submissionNote: "用于小米商城会员限定随行礼盒包装提交审核，当前页面仅保留包装正侧面、内部物料、内托图占位和版本备注。",
+  submissionNote: "用于小米商城会员限定随行礼盒包装提交审核，包含外盒正侧面、内托布局与内部物料尺寸。",
+  sectionNotes: {
+    outerPackage: "用于确认外包装正面与侧面视觉、文案和最终提交版本。",
+    dimensions: "用于确认外盒与内部小包装尺寸关系。",
+    innerTray: "用于确认礼盒打开后的内部摆放结构。",
+    materials: "用于确认随行礼盒内三件物料包装图与尺寸。",
+  },
   assets: {
     outerCover: `${assetBase}/outer-cover.jpg`,
     outerSide: `${assetBase}/outer-side.jpg`,
@@ -53,7 +60,7 @@ export const packaging = {
       note: "主包装盒正面审核图",
       usage: "外盒正面封面展示",
       status: "Confirmed",
-      version: "V1.2",
+      version: "V1.4",
     },
     {
       id: "outer-side",
@@ -65,13 +72,14 @@ export const packaging = {
       note: "主包装盒真实侧面图",
       usage: "外盒侧面结构展示",
       status: "Confirmed",
-      version: "V1.2",
+      version: "V1.4",
     },
   ] satisfies PackageDimension[],
   innerItems: [
     {
       id: "inner-eye-mask",
       name: "挂耳式睡眠眼罩",
+      marker: "A",
       widthCm: 24.2,
       heightCm: 15,
       depthCm: 2,
@@ -81,11 +89,12 @@ export const packaging = {
       note: "扁平长盒，置于内托左侧主分区",
       usage: "内部物料包装审核",
       status: "Confirmed",
-      version: "V1.2",
+      version: "V1.4",
     },
     {
       id: "inner-neck-pillow",
       name: "口袋充气U型枕",
+      marker: "B",
       widthCm: 15,
       heightCm: 7.5,
       depthCm: 6,
@@ -95,11 +104,12 @@ export const packaging = {
       note: "厚度最高，置于内托中部承重分区",
       usage: "内部物料包装审核",
       status: "Confirmed",
-      version: "V1.2",
+      version: "V1.4",
     },
     {
       id: "inner-xiaomi-tag",
       name: "Xiaomi Tag",
+      marker: "C",
       widthCm: 7.5,
       heightCm: 7.5,
       depthCm: 2,
@@ -109,7 +119,7 @@ export const packaging = {
       note: "小方盒，置于右侧配件分区",
       usage: "内部物料包装审核",
       status: "Confirmed",
-      version: "V1.2",
+      version: "V1.4",
     },
   ] satisfies InnerPackage[],
   safetyZone: {
@@ -128,19 +138,23 @@ export const packaging = {
   reviewNotes: [
     {
       label: "当前版本",
-      value: "V1.2",
+      value: "V1.4",
     },
     {
-      label: "审核用途",
+      label: "提交用途",
       value: "Platform Packaging Review",
     },
     {
-      label: "页面状态",
-      value: "Draft for Review",
+      label: "提交内容",
+      value: "外盒正面、外盒侧面、内托布局、内部物料",
+    },
+    {
+      label: "待确认项",
+      value: "平台审核反馈",
     },
     {
       label: "下一步动作",
-      value: "等待平台审核反馈",
+      value: "根据审核反馈调整最终包装稿",
     },
   ],
 };

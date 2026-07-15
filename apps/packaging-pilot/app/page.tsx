@@ -37,10 +37,31 @@ function InfoLine({ label, value }: { label: string; value: string }) {
   );
 }
 
+function DimensionLines({ item, compact = false }: { item: PackageDimension; compact?: boolean }) {
+  return (
+    <div className={`pointer-events-none absolute ${compact ? "inset-3" : "inset-5"}`}>
+      <div className="absolute -top-5 left-0 right-0 flex items-center gap-2">
+        <span className="h-3 w-px bg-[#555555]" />
+        <span className="h-px flex-1 bg-[#555555]" />
+        <span className="bg-white px-2 text-xs font-semibold text-[#111111]">{item.widthCm}cm</span>
+        <span className="h-px flex-1 bg-[#555555]" />
+        <span className="h-3 w-px bg-[#555555]" />
+      </div>
+      <div className="absolute -right-8 bottom-0 top-0 flex flex-col items-center gap-2">
+        <span className="h-px w-3 bg-[#555555]" />
+        <span className="w-px flex-1 bg-[#555555]" />
+        <span className="-rotate-90 bg-white px-2 text-xs font-semibold text-[#111111]">{item.heightCm}cm</span>
+        <span className="w-px flex-1 bg-[#555555]" />
+        <span className="h-px w-3 bg-[#555555]" />
+      </div>
+    </div>
+  );
+}
+
 function OuterPackageCard({ item }: { item: PackageDimension }) {
   return (
     <article className="border border-[#CFCFCF] bg-white">
-      <div className="flex min-h-[420px] items-center justify-center border-b border-[#D8D8D8] bg-white p-6">
+      <div className="relative flex min-h-[420px] items-center justify-center border-b border-[#D8D8D8] bg-white px-12 py-10">
         {item.image ? (
           <Image
             src={item.image}
@@ -50,6 +71,7 @@ function OuterPackageCard({ item }: { item: PackageDimension }) {
             className={item.id === "outer-front" ? "max-h-[360px] w-auto object-cover" : "max-h-[170px] w-full object-cover"}
           />
         ) : null}
+        <DimensionLines item={item} />
       </div>
       <div className="p-4">
         <div className="mb-3 flex items-center justify-between gap-3">
@@ -68,6 +90,37 @@ function OuterPackageCard({ item }: { item: PackageDimension }) {
   );
 }
 
+function DimensionCard({ item }: { item: PackageDimension }) {
+  return (
+    <article className="border border-[#CFCFCF] bg-white">
+      <div className="flex items-center justify-between border-b border-[#D8D8D8] px-4 py-3">
+        <div className="flex items-center gap-3">
+          {item.marker ? (
+            <span className="grid size-7 place-items-center rounded-[4px] bg-[#FF6900] text-sm font-semibold text-white">{item.marker}</span>
+          ) : null}
+          <div>
+            <p className="text-sm font-semibold text-[#111111]">{item.name}</p>
+            <p className="mt-1 text-xs text-[#777777]">{item.fileName ?? item.note}</p>
+          </div>
+        </div>
+        <p className="text-sm font-semibold text-[#111111]">{formatSize(item)}</p>
+      </div>
+      <div className="relative flex min-h-[280px] items-center justify-center px-12 py-10">
+        <div
+          className="border border-[#111111] bg-white"
+          style={{
+            width: Math.min(Math.max(item.widthCm * 8, 112), 280),
+            height: Math.min(Math.max(item.heightCm * 8, 70), 280),
+          }}
+        >
+          {item.image ? <Image src={item.image} alt={item.name} width={900} height={700} className="h-full w-full object-contain" /> : null}
+        </div>
+        <DimensionLines item={item} compact />
+      </div>
+    </article>
+  );
+}
+
 function InnerTraySection({ items }: { items: InnerPackage[] }) {
   return (
     <article className="border border-[#CFCFCF] bg-white">
@@ -78,7 +131,16 @@ function InnerTraySection({ items }: { items: InnerPackage[] }) {
 
       {packaging.innerTray.hasImage ? (
         <div className="border-b border-[#D8D8D8] bg-white p-5">
-          <Image src={packaging.innerTray.image} alt={packaging.innerTray.title} width={1600} height={1000} className="w-full object-contain" />
+          <div className="relative">
+            <Image src={packaging.innerTray.image} alt={packaging.innerTray.title} width={1600} height={1000} className="w-full object-contain" />
+            <div className="absolute left-4 top-4 flex gap-2">
+              {items.map((item) => (
+                <span key={item.id} className="grid size-8 place-items-center rounded-[4px] bg-[#FF6900] text-sm font-semibold text-white">
+                  {item.marker}
+                </span>
+              ))}
+            </div>
+          </div>
         </div>
       ) : (
         <div className="flex min-h-[420px] items-center justify-center border-b border-[#D8D8D8] bg-[#F7F7F5] p-8">
@@ -92,7 +154,7 @@ function InnerTraySection({ items }: { items: InnerPackage[] }) {
       <div className="grid gap-px bg-[#D8D8D8] md:grid-cols-3">
         {items.map((item) => (
           <div key={item.id} className="bg-white p-4">
-            <p className="text-xs text-[#777777]">{item.position}</p>
+            <p className="text-xs font-semibold text-[#FF6900]">{item.marker} / {item.position}</p>
             <p className="mt-1 text-sm font-semibold text-[#111111]">{item.name}</p>
             <p className="mt-2 text-sm text-[#666666]">{formatSize(item)}</p>
           </div>
@@ -110,7 +172,10 @@ function MaterialCard({ item }: { item: InnerPackage }) {
       </div>
       <div className="p-4">
         <p className="text-xs text-[#777777]">{item.fileName}</p>
-        <h3 className="mt-1 text-base font-semibold text-[#111111]">{item.name}</h3>
+        <h3 className="mt-1 flex items-center gap-2 text-base font-semibold text-[#111111]">
+          <span className="grid size-6 place-items-center rounded-[4px] bg-[#FF6900] text-xs font-semibold text-white">{item.marker}</span>
+          {item.name}
+        </h3>
         <p className="mt-3 text-sm text-[#666666]">{formatSize(item)}</p>
       </div>
     </article>
@@ -144,30 +209,40 @@ export default function PackagingPilotPage() {
           </div>
 
           <div className="grid gap-px bg-[#D8D8D8] p-px md:grid-cols-[1fr_0.75fr]">
-            <div className="flex min-h-[520px] items-center justify-center bg-white p-6">
+            <div className="flex min-h-[430px] items-center justify-center bg-white p-6">
               <Image
                 src={packaging.assets.outerCover}
                 alt="小米商城会员限定随行礼盒外包装封面"
                 width={1400}
                 height={1400}
                 priority
-                className="max-h-[460px] w-auto object-cover"
+                className="max-h-[380px] w-auto object-cover"
               />
             </div>
-            <div className="flex min-h-[520px] items-center justify-center bg-white p-6">
-              <Image
-                src={packaging.assets.outerSide}
-                alt="小米商城会员限定随行礼盒外包装侧面"
-                width={1200}
-                height={320}
-                className="h-auto w-full object-cover"
-              />
+            <div className="grid bg-[#D8D8D8]">
+              <div className="flex min-h-[300px] items-center justify-center bg-white p-6">
+                <Image
+                  src={packaging.assets.outerSide}
+                  alt="小米商城会员限定随行礼盒外包装侧面"
+                  width={1200}
+                  height={320}
+                  className="h-auto w-full object-cover"
+                />
+              </div>
+              <div className="grid gap-px bg-[#D8D8D8]">
+                {packaging.outerDimensions.map((item) => (
+                  <div key={item.id} className="flex items-center justify-between bg-white px-4 py-3 text-sm">
+                    <span className="text-[#666666]">{item.name}</span>
+                    <span className="font-semibold text-[#111111]">{item.widthCm}cm × {item.heightCm}cm</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </section>
 
         <section className="py-14">
-          <SectionHeader index="01" title="外包装展示" description="正面与侧面以图片为主，保留包装提交所需的基础信息。" />
+          <SectionHeader index="01" title="外包装展示" description={packaging.sectionNotes.outerPackage} />
           <div className="grid gap-5 lg:grid-cols-2">
             {packaging.outerDimensions.map((item) => (
               <OuterPackageCard key={item.id} item={item} />
@@ -176,12 +251,21 @@ export default function PackagingPilotPage() {
         </section>
 
         <section className="py-4">
-          <SectionHeader index="02" title="内托平面布局" description="此处用于展示盒子打开后的内部排列；未提供真实图时仅显示占位，不模拟真实结构。" />
+          <SectionHeader index="02" title="尺寸展示" description={packaging.sectionNotes.dimensions} />
+          <div className="grid gap-5 lg:grid-cols-2">
+            {[...packaging.outerDimensions, ...packaging.innerItems].map((item) => (
+              <DimensionCard key={item.id} item={item} />
+            ))}
+          </div>
+        </section>
+
+        <section className="py-4">
+          <SectionHeader index="03" title="内托平面布局" description={packaging.sectionNotes.innerTray} />
           <InnerTraySection items={packaging.innerItems} />
         </section>
 
         <section className="py-14">
-          <SectionHeader index="03" title="内部物料" description="三件内部小包装按规格板式展示，仅保留图片、名称与尺寸。" />
+          <SectionHeader index="04" title="内部物料" description={packaging.sectionNotes.materials} />
           <div className="grid gap-5 lg:grid-cols-3">
             {packaging.innerItems.map((item) => (
               <MaterialCard key={item.id} item={item} />
@@ -190,8 +274,8 @@ export default function PackagingPilotPage() {
         </section>
 
         <section className="pb-16">
-          <SectionHeader index="04" title="版本备注" />
-          <div className="grid border border-[#CFCFCF] bg-white md:grid-cols-4">
+          <SectionHeader index="05" title="提交信息" />
+          <div className="grid border border-[#CFCFCF] bg-white md:grid-cols-5">
             {packaging.reviewNotes.map((note) => (
               <div key={note.label} className="border-b border-r border-[#D8D8D8] p-4 last:border-r-0 md:border-b-0">
                 <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#777777]">{note.label}</p>

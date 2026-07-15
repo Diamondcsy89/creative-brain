@@ -37,6 +37,7 @@ export const packaging = {
   sectionNotes: {
     outerPackage: "用于确认外包装正面与侧面视觉、文案和最终提交版本。",
     dimensions: "用于确认外盒与内部小包装尺寸关系。",
+    dimensionSchematic: "本区域为尺寸比例示意，标注线对应规格矩形，不对应图片裁切边界。",
     innerTray: "用于确认礼盒打开后的内部摆放结构。",
     materials: "用于确认随行礼盒内三件物料包装图与尺寸。",
   },

@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { DimensionSchematic } from "@/components/DimensionSchematic";
 import { packaging, type InnerPackage, type PackageDimension, type ReviewStatus } from "@/data/packaging";
 
 function formatSize(item: PackageDimension) {
@@ -37,31 +38,10 @@ function InfoLine({ label, value }: { label: string; value: string }) {
   );
 }
 
-function DimensionLines({ item, compact = false }: { item: PackageDimension; compact?: boolean }) {
-  return (
-    <div className={`pointer-events-none absolute ${compact ? "inset-3" : "inset-5"}`}>
-      <div className="absolute -top-5 left-0 right-0 flex items-center gap-2">
-        <span className="h-3 w-px bg-[#555555]" />
-        <span className="h-px flex-1 bg-[#555555]" />
-        <span className="bg-white px-2 text-xs font-semibold text-[#111111]">{item.widthCm}cm</span>
-        <span className="h-px flex-1 bg-[#555555]" />
-        <span className="h-3 w-px bg-[#555555]" />
-      </div>
-      <div className="absolute -right-8 bottom-0 top-0 flex flex-col items-center gap-2">
-        <span className="h-px w-3 bg-[#555555]" />
-        <span className="w-px flex-1 bg-[#555555]" />
-        <span className="-rotate-90 bg-white px-2 text-xs font-semibold text-[#111111]">{item.heightCm}cm</span>
-        <span className="w-px flex-1 bg-[#555555]" />
-        <span className="h-px w-3 bg-[#555555]" />
-      </div>
-    </div>
-  );
-}
-
 function OuterPackageCard({ item }: { item: PackageDimension }) {
   return (
     <article className="border border-[#CFCFCF] bg-white">
-      <div className="relative flex min-h-[420px] items-center justify-center border-b border-[#D8D8D8] bg-white px-12 py-10">
+      <div className="flex min-h-[420px] items-center justify-center border-b border-[#D8D8D8] bg-white p-6">
         {item.image ? (
           <Image
             src={item.image}
@@ -71,7 +51,6 @@ function OuterPackageCard({ item }: { item: PackageDimension }) {
             className={item.id === "outer-front" ? "max-h-[360px] w-auto object-cover" : "max-h-[170px] w-full object-cover"}
           />
         ) : null}
-        <DimensionLines item={item} />
       </div>
       <div className="p-4">
         <div className="mb-3 flex items-center justify-between gap-3">
@@ -85,37 +64,6 @@ function OuterPackageCard({ item }: { item: PackageDimension }) {
         <InfoLine label="尺寸" value={formatSize(item)} />
         <InfoLine label="版本" value={item.version} />
         <InfoLine label="状态" value={item.status} />
-      </div>
-    </article>
-  );
-}
-
-function DimensionCard({ item }: { item: PackageDimension }) {
-  return (
-    <article className="border border-[#CFCFCF] bg-white">
-      <div className="flex items-center justify-between border-b border-[#D8D8D8] px-4 py-3">
-        <div className="flex items-center gap-3">
-          {item.marker ? (
-            <span className="grid size-7 place-items-center rounded-[4px] bg-[#FF6900] text-sm font-semibold text-white">{item.marker}</span>
-          ) : null}
-          <div>
-            <p className="text-sm font-semibold text-[#111111]">{item.name}</p>
-            <p className="mt-1 text-xs text-[#777777]">{item.fileName ?? item.note}</p>
-          </div>
-        </div>
-        <p className="text-sm font-semibold text-[#111111]">{formatSize(item)}</p>
-      </div>
-      <div className="relative flex min-h-[280px] items-center justify-center px-12 py-10">
-        <div
-          className="border border-[#111111] bg-white"
-          style={{
-            width: Math.min(Math.max(item.widthCm * 8, 112), 280),
-            height: Math.min(Math.max(item.heightCm * 8, 70), 280),
-          }}
-        >
-          {item.image ? <Image src={item.image} alt={item.name} width={900} height={700} className="h-full w-full object-contain" /> : null}
-        </div>
-        <DimensionLines item={item} compact />
       </div>
     </article>
   );
@@ -251,10 +199,13 @@ export default function PackagingPilotPage() {
         </section>
 
         <section className="py-4">
-          <SectionHeader index="02" title="尺寸展示" description={packaging.sectionNotes.dimensions} />
+          <SectionHeader index="02" title="尺寸示意图 / Dimension Schematic" description={packaging.sectionNotes.dimensions} />
+          <p className="mb-5 border-l-2 border-[#FF6900] bg-white px-4 py-3 text-sm font-medium text-[#555555]">
+            {packaging.sectionNotes.dimensionSchematic}
+          </p>
           <div className="grid gap-5 lg:grid-cols-2">
             {[...packaging.outerDimensions, ...packaging.innerItems].map((item) => (
-              <DimensionCard key={item.id} item={item} />
+              <DimensionSchematic key={item.id} item={item} />
             ))}
           </div>
         </section>

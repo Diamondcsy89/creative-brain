@@ -10,3 +10,6 @@ build/
 *.log
 pnpm-debug.log*
 *.tsbuildinfo
+
+# Local source assets
+knowledge/01_Assets/

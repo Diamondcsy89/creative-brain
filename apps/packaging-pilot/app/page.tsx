@@ -113,7 +113,7 @@ function InnerTraySection({ items }: { items: InnerPackage[] }) {
   );
 }
 
-function MaterialCard({ item, maxDepthCm }: { item: InnerPackage; maxDepthCm: number }) {
+function MaterialCard({ item }: { item: InnerPackage }) {
   return (
     <article className="flex min-h-[360px] flex-col border border-[#CFCFCF] bg-white">
       <div className="flex flex-1 items-center justify-center border-b border-[#D8D8D8] p-5">
@@ -127,14 +127,12 @@ function MaterialCard({ item, maxDepthCm }: { item: InnerPackage; maxDepthCm: nu
         </h3>
         <p className="mt-3 text-sm text-[#666666]">{formatSize(item)}</p>
       </div>
-      <ThicknessSchematic item={item} maxDepthCm={maxDepthCm} />
+      <ThicknessSchematic item={item} />
     </article>
   );
 }
 
 export default function PackagingPilotPage() {
-  const maxInnerDepthCm = Math.max(...packaging.innerItems.map((item) => item.depthCm ?? 0));
-
   return (
     <main className="min-h-screen bg-[#F7F7F5] px-6 py-6 text-[#111111] lg:px-10">
       <div className="mx-auto max-w-[1360px]">
@@ -210,7 +208,7 @@ export default function PackagingPilotPage() {
           <SectionHeader index="04" title="内部物料" description={packaging.sectionNotes.materials} />
           <div className="grid gap-5 lg:grid-cols-3">
             {packaging.innerItems.map((item) => (
-              <MaterialCard key={item.id} item={item} maxDepthCm={maxInnerDepthCm} />
+              <MaterialCard key={item.id} item={item} />
             ))}
           </div>
           <p className="mt-4 border-l-2 border-[#FF6900] bg-white px-4 py-3 text-sm font-medium text-[#555555]">

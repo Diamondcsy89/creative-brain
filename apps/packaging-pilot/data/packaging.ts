@@ -34,6 +34,7 @@ export const packaging = {
   outerBoxSize: "30cm × 30cm × 8cm",
   nextAction: "等待平台审核反馈",
   submissionNote: "用于小米商城会员限定随行礼盒包装提交审核，包含外盒正侧面、内托布局与内部物料尺寸。",
+  heroOverviewNote: "效果示意图：用于说明礼盒开启后的内部摆放方式，不作为尺寸审核依据。",
   sectionNotes: {
     outerPackage: "用于确认外包装正面与侧面视觉、文案和最终提交版本。",
     dimensions: "用于确认外盒与内部小包装尺寸关系。",
@@ -42,6 +43,7 @@ export const packaging = {
     materials: "用于确认随行礼盒内三件物料包装图与尺寸。",
   },
   assets: {
+    heroOverview: `${assetBase}/hero-overview.jpg`,
     outerCover: `${assetBase}/outer-cover.jpg`,
     outerSide: `${assetBase}/outer-side.jpg`,
     innerTrayLayout: `${assetBase}/inner-tray-layout.jpg`,

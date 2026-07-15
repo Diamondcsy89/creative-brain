@@ -156,34 +156,21 @@ export default function PackagingPilotPage() {
             </div>
           </div>
 
-          <div className="grid gap-px bg-[#D8D8D8] p-px md:grid-cols-[1fr_0.75fr]">
-            <div className="flex min-h-[430px] items-center justify-center bg-white p-6">
+          <div className="bg-white p-5">
+            <div className="border border-[#D8D8D8]">
+              <div className="flex min-h-[430px] items-center justify-center border-b border-[#D8D8D8] bg-white p-5">
               <Image
-                src={packaging.assets.outerCover}
-                alt="小米商城会员限定随行礼盒外包装封面"
-                width={1400}
-                height={1400}
+                src={packaging.assets.heroOverview}
+                alt="小米商城会员限定随行礼盒摆放拆解效果图"
+                width={1600}
+                height={1000}
                 priority
-                className="max-h-[380px] w-auto object-cover"
+                className="max-h-[410px] w-full object-contain"
               />
-            </div>
-            <div className="grid bg-[#D8D8D8]">
-              <div className="flex min-h-[300px] items-center justify-center bg-white p-6">
-                <Image
-                  src={packaging.assets.outerSide}
-                  alt="小米商城会员限定随行礼盒外包装侧面"
-                  width={1200}
-                  height={320}
-                  className="h-auto w-full object-cover"
-                />
               </div>
-              <div className="grid gap-px bg-[#D8D8D8]">
-                {packaging.outerDimensions.map((item) => (
-                  <div key={item.id} className="flex items-center justify-between bg-white px-4 py-3 text-sm">
-                    <span className="text-[#666666]">{item.name}</span>
-                    <span className="font-semibold text-[#111111]">{item.widthCm}cm × {item.heightCm}cm</span>
-                  </div>
-                ))}
+              <div className="bg-[#F7F7F5] px-4 py-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#FF6900]">Overview Image</p>
+                <p className="mt-2 text-sm leading-6 text-[#555555]">{packaging.heroOverviewNote}</p>
               </div>
             </div>
           </div>

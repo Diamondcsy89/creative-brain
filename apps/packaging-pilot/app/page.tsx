@@ -147,7 +147,7 @@ export default function PackagingPilotPage() {
 
         <section className="grid border border-[#CFCFCF] bg-white lg:grid-cols-[0.78fr_1.22fr]">
           <div className="border-b border-[#D8D8D8] p-8 lg:border-b-0 lg:border-r">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#FF6900]">Packaging Submission</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#FF6900]">00 Overview</p>
             <h1 className="mt-5 max-w-2xl text-5xl font-semibold leading-[1.04] tracking-[-0.035em]">{packaging.productName}</h1>
             <p className="mt-5 max-w-xl text-sm leading-7 text-[#666666]">{packaging.submissionNote}</p>
             <div className="mt-8">
@@ -160,15 +160,15 @@ export default function PackagingPilotPage() {
 
           <div className="bg-white p-5">
             <div className="border border-[#D8D8D8]">
-              <div className="flex min-h-[430px] items-center justify-center border-b border-[#D8D8D8] bg-white p-5">
-              <Image
-                src={packaging.assets.heroOverview}
-                alt="小米商城会员限定随行礼盒摆放拆解效果图"
-                width={1600}
-                height={1000}
-                priority
-                className="max-h-[410px] w-full object-contain"
-              />
+              <div className="flex min-h-[470px] items-center justify-center border-b border-[#D8D8D8] bg-white p-4">
+                <Image
+                  src={packaging.assets.heroOverview}
+                  alt="小米商城会员限定随行礼盒摆放拆解效果图"
+                  width={1600}
+                  height={1000}
+                  priority
+                  className="max-h-[450px] w-full object-contain"
+                />
               </div>
               <div className="bg-[#F7F7F5] px-4 py-3">
                 <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#FF6900]">Overview Image</p>
@@ -217,7 +217,7 @@ export default function PackagingPilotPage() {
         </section>
 
         <section className="pb-16">
-          <SectionHeader index="05" title="提交信息" />
+          <SectionHeader index="05" title="提交信息 / Submission Info" />
           <div className="grid border border-[#CFCFCF] bg-white md:grid-cols-5">
             {packaging.reviewNotes.map((note) => (
               <div key={note.label} className="border-b border-r border-[#D8D8D8] p-4 last:border-r-0 md:border-b-0">

@@ -24,7 +24,7 @@ const assetBase = "/packaging/mi-gift-box";
 export const packaging = {
   productName: "小米商城会员限定随行礼盒",
   subtitle: "平台审核包装设计与产品包装展示",
-  version: "V1.4",
+  version: "V1.6",
   documentTitle: "Packaging Review Page",
   projectType: "Packaging Review",
   reviewPurpose: "Platform Packaging Review",
@@ -64,7 +64,7 @@ export const packaging = {
       note: "主包装盒正面审核图",
       usage: "外盒正面封面展示",
       status: "Confirmed",
-      version: "V1.4",
+      version: "V1.6",
     },
     {
       id: "outer-side",
@@ -76,7 +76,7 @@ export const packaging = {
       note: "主包装盒真实侧面图",
       usage: "外盒侧面结构展示",
       status: "Confirmed",
-      version: "V1.4",
+      version: "V1.6",
     },
   ] satisfies PackageDimension[],
   innerItems: [
@@ -93,7 +93,7 @@ export const packaging = {
       note: "扁平长盒，置于内托左侧主分区",
       usage: "内部物料包装审核",
       status: "Confirmed",
-      version: "V1.4",
+      version: "V1.6",
     },
     {
       id: "inner-neck-pillow",
@@ -108,7 +108,7 @@ export const packaging = {
       note: "厚度最高，置于内托中部承重分区",
       usage: "内部物料包装审核",
       status: "Confirmed",
-      version: "V1.4",
+      version: "V1.6",
     },
     {
       id: "inner-xiaomi-tag",
@@ -123,7 +123,7 @@ export const packaging = {
       note: "小方盒，置于右侧配件分区",
       usage: "内部物料包装审核",
       status: "Confirmed",
-      version: "V1.4",
+      version: "V1.6",
     },
   ] satisfies InnerPackage[],
   safetyZone: {
@@ -142,7 +142,7 @@ export const packaging = {
   reviewNotes: [
     {
       label: "当前版本",
-      value: "V1.4",
+      value: "V1.6",
     },
     {
       label: "提交用途",

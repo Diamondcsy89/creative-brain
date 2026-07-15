@@ -21,7 +21,8 @@ export type InnerPackage = PackageDimension & {
 
 const assetBase = "/packaging/<project-slug>";
 
-export const packaging = {
+export const submissions = [{
+  slug: "<project-slug>",
   productName: "<产品名称>",
   subtitle: "平台审核包装设计与产品包装展示",
   version: "V1.0",
@@ -121,4 +122,8 @@ export const packaging = {
       value: "根据审核反馈调整最终包装稿",
     },
   ],
-};
+}];
+
+export function getSubmissionBySlug(slug: string) {
+  return submissions.find((submission) => submission.slug === slug);
+}

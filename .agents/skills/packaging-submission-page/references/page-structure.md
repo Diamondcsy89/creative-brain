@@ -1,5 +1,26 @@
 # Page Structure
 
+## Multi-Page System
+
+Prefer a multi-page submission system:
+
+- Root path `/` is the submission index.
+- Each package submission lives at `/submissions/[slug]`.
+- New projects must not overwrite old projects.
+- A new package should only require:
+  - adding files under `public/packaging/[slug]/`
+  - adding one submission entry in `data/submissions.ts`
+  - visiting `/submissions/[slug]`
+
+## Index Page
+
+The root path `/` should show:
+
+- Page title: `Packaging Submission`
+- Short description: `用于管理包装提交审核页面`
+- Submission cards or table rows.
+- Each item should include product name, slug, version, status, outer size, and a `View Submission` link.
+
 Default page order:
 
 1. `00 Overview`

@@ -1,6 +1,6 @@
 # Dimension Rules
 
-All dimensions must come from centralized data, normally `data/packaging.ts`.
+All dimensions must come from centralized data, normally `data/submissions.ts`.
 
 ## Core Principles
 

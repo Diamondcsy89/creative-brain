@@ -38,14 +38,15 @@ Required data:
 ## Page Generation Flow
 
 1. Inventory available assets and identify missing images.
-2. Create or update centralized packaging data in `data/packaging.ts`.
-3. Build the page using the default structure in `references/page-structure.md`.
-4. Apply the visual rules in `references/visual-rules.md`.
-5. Apply asset fallback rules in `references/asset-priority.md`.
-6. Apply dimension rendering rules in `references/dimension-rules.md`.
-7. Keep real images for visual preview only.
-8. Use independent schematic components for dimension relationships.
-9. Verify the page with the required build command.
+2. Create or update centralized packaging data in `data/submissions.ts`.
+3. Prefer the multi-page structure: root submission index plus one route per submission.
+4. Build each submission page using the default structure in `references/page-structure.md`.
+5. Apply the visual rules in `references/visual-rules.md`.
+6. Apply asset fallback rules in `references/asset-priority.md`.
+7. Apply dimension rendering rules in `references/dimension-rules.md`.
+8. Keep real images for visual preview only.
+9. Use independent schematic components for dimension relationships.
+10. Verify the page with the required build command.
 
 ## Build Verification
 
@@ -64,7 +65,7 @@ The final page should:
 - Feel like a Xiaomi-style packaging submission or engineering review page.
 - Use a restrained white and light-gray system with black/gray text and Xiaomi orange accents.
 - Present true assets clearly without pretending schematic elements are real renders.
-- Keep dimensions accurate and sourced from `data/packaging.ts`.
+- Keep dimensions accurate and sourced from `data/submissions.ts`.
 - Avoid complex audit tables unless the user explicitly requests them.
 - Clearly separate visual preview images from dimension schematics.
 

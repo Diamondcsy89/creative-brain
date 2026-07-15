@@ -1,5 +1,5 @@
 import Image from "next/image";
-import type { PackageDimension } from "@/data/packaging";
+import type { PackageDimension } from "@/data/submissions";
 
 function formatSize(item: PackageDimension) {
   const base = `${item.widthCm}cm × ${item.heightCm}cm`;

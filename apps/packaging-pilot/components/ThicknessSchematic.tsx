@@ -1,4 +1,4 @@
-import type { InnerPackage } from "@/data/packaging";
+import type { InnerPackage } from "@/data/submissions";
 
 function formatFrontSize(item: InnerPackage) {
   return `${item.widthCm}cm × ${item.heightCm}cm`;

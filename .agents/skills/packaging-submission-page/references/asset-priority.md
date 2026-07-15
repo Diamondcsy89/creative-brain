@@ -14,6 +14,14 @@ If present, use:
 - `inner-*-side.jpg`: inner pack side image.
 - `inner-*-depth.jpg`: inner pack depth image.
 
+Store images by submission slug:
+
+- `public/packaging/[slug]/hero-overview.jpg`
+- `public/packaging/[slug]/outer-cover.jpg`
+- `public/packaging/[slug]/outer-side.jpg`
+- `public/packaging/[slug]/inner-tray-layout.jpg`
+- `public/packaging/[slug]/inner-*.jpg`
+
 ## Fallback Rules
 
 - If a real image exists, show it.

@@ -77,7 +77,9 @@
 - 如果图片较长，则受最大宽度限制
 - 等价于 max-width + max-height 的安全框适配
 
-当前实现会优先直接替换槽位图层的图片填充，并保留槽位图层的位置、尺寸和名称。如果 MasterGo API 不支持直接替换该图层的填充，插件会在槽位同一父级下创建一个新图片矩形，名称为原槽位名称 + ` / image`，不会删除原槽位。
+当前实现会在槽位同一父级下创建一个新的可见图片矩形，名称为原槽位名称 + ` / replaced-image`，并保留原槽位作为安全框，不会删除原槽位。
+
+当前图片填充依据 `@mastergo/plugin-typings`：`mg.createImage(Uint8Array)` 返回 `Image`，图片引用使用 `image.href`，`ImagePaint` 使用 `imageRef` 字段并设置 `scaleMode: "FIT"`。
 
 产品名图片建议提前裁掉多余透明边距，这样 contain 适配后视觉大小更稳定。替换后仍可在 MasterGo 中手动调整图片大小和位置。
 

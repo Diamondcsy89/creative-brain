@@ -413,23 +413,24 @@ function describeDebugValue(value) {
 }
 
 function createContainImagePaints(imageResource) {
-  const base = {
-    type: "IMAGE",
-    scaleMode: "FIT"
-  };
-  const ref = imageResource.ref;
-  const href = imageResource.href || ref;
+  return [createImageFill(imageResource, "FIT")];
+}
 
-  return [
-    { ...base, href },
-    { ...base, imageHref: href },
-    { ...base, imageRef: href },
-    { ...base, ref: href },
-    { ...base, image: imageResource.raw },
-    { ...base, imageHash: ref },
-    { ...base, hash: ref },
-    { ...base, imageId: ref }
-  ];
+function createImageFill(imageResource, mode) {
+  const imageRef = imageResource.href || imageResource.ref;
+  if (!imageRef) {
+    throw new Error("图片资源缺少 href，无法创建 MasterGo ImagePaint");
+  }
+
+  return {
+    type: "IMAGE",
+    imageRef,
+    scaleMode: mode,
+    isVisible: true,
+    alpha: 1,
+    filters: {},
+    colorStyleId: ""
+  };
 }
 
 function createVisibleReplacementImage(slot, imageResource, payload) {
@@ -458,6 +459,7 @@ function createVisibleReplacementImage(slot, imageResource, payload) {
     try {
       imageNode.fills = [paint];
       filled = true;
+      postStatus("已创建图片填充");
       break;
     } catch (error) {
       console.log(`图片节点填充失败，尝试下一种 paint：${getErrorMessage(error)}`);
@@ -465,17 +467,47 @@ function createVisibleReplacementImage(slot, imageResource, payload) {
   }
 
   if (!filled) {
+    createImageFillSmokeTest(slot, imageResource);
     throw new Error("已创建图片节点，但无法设置图片填充");
   }
 
   slot.parent.appendChild(imageNode);
   bringNodeToFront(imageNode);
+  postStatus(`已创建可见 replaced-image 图层：${imageNode.name}`);
 
   return {
     node: imageNode,
     slot: slotBounds,
     image: fitted
   };
+}
+
+function createImageFillSmokeTest(slot, imageResource) {
+  try {
+    if (typeof host.createRectangle !== "function") {
+      postStatus("最小测试失败：当前 API 不支持 createRectangle");
+      return;
+    }
+
+    const parent = slot.parent || getCurrentPage();
+    if (!parent || typeof parent.appendChild !== "function") {
+      postStatus("最小测试失败：无法找到可插入测试矩形的父级");
+      return;
+    }
+
+    const slotBounds = getNodeBounds(slot);
+    const testNode = host.createRectangle();
+    testNode.name = "MasterGo image fill smoke test";
+    testNode.x = slotBounds.x;
+    testNode.y = slotBounds.y + slotBounds.height + 16;
+    resizeNode(testNode, 300, 120);
+    testNode.fills = [createImageFill(imageResource, "FIT")];
+    parent.appendChild(testNode);
+    bringNodeToFront(testNode);
+    postStatus("最小测试成功：已创建 300×120 图片填充矩形");
+  } catch (error) {
+    postStatus(`最小测试失败：${getErrorMessage(error)}`);
+  }
 }
 
 function getNodeBounds(node) {

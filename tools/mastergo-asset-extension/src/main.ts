@@ -142,9 +142,11 @@ async function replaceTemplateText(payload) {
 
 async function replaceProductNameImages(payload) {
   const bytes = getImageBytes(payload);
+  const imageType = normalizeImageType(payload.imageType || payload.mimeType, payload.fileName);
   postStatus(`main 已收到图片数据：${payload.fileName || "未命名文件"} / ${bytes.length} bytes`);
+  postStatus(`main 规范化 imageType：${imageType}`);
   postStatus("正在创建 MasterGo 图片资源");
-  const imageResource = await createImageResource(bytes, payload);
+  const imageResource = await createImageResource(bytes, payload, imageType);
   postStatus(`imageHash 创建成功：${imageResource.hash}`);
   const slots = getTemplateNodes().filter((node) => {
     const target = getTargetForNode(node);
@@ -207,19 +209,23 @@ function decodeBase64ToBytes(base64) {
   return bytes;
 }
 
-async function createImageResource(bytes, payload) {
+async function createImageResource(bytes, payload, imageType) {
   const attempts = [];
   const base64 = payload.base64 || encodeBytesToBase64(bytes);
   const dataUrl = `data:${payload.mimeType || "image/png"};base64,${base64}`;
   const byteInputs = [
+    { label: "ObjectTypeDataUint8Array", value: { type: imageType, data: bytes } },
+    { label: "ObjectTypeDataArrayBuffer", value: { type: imageType, data: bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) } },
+    { label: "ObjectTypeBytesUint8Array", value: { type: imageType, bytes } },
+    { label: "ObjectTypeBase64", value: { type: imageType, base64 } },
     { label: "Uint8Array", value: bytes },
     { label: "ArrayBuffer", value: bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) },
     { label: "NumberArray", value: Array.from(bytes) },
     { label: "Base64", value: base64 },
     { label: "DataURL", value: dataUrl },
-    { label: "ObjectData", value: { data: bytes, fileName: payload.fileName, mimeType: payload.mimeType } },
-    { label: "ObjectBytes", value: { bytes, fileName: payload.fileName, mimeType: payload.mimeType } },
-    { label: "ObjectBase64", value: { base64, fileName: payload.fileName, mimeType: payload.mimeType } }
+    { label: "ObjectData", value: { data: bytes, fileName: payload.fileName, mimeType: payload.mimeType, type: imageType } },
+    { label: "ObjectBytes", value: { bytes, fileName: payload.fileName, mimeType: payload.mimeType, type: imageType } },
+    { label: "ObjectBase64", value: { base64, fileName: payload.fileName, mimeType: payload.mimeType, type: imageType } }
   ];
 
   const createImageMethods = [
@@ -259,10 +265,37 @@ async function createImageResource(bytes, payload) {
   throw new Error([
     "图片创建失败，未获得 imageHash",
     `文件：${payload.fileName || "unknown"}`,
-    `类型：${payload.mimeType || "unknown"}`,
+    `原始类型：${payload.mimeType || "unknown"}`,
+    `规范化类型：${imageType}`,
     `字节数：${bytes.length}`,
     `尝试记录：${attempts.join(" | ")}`
   ].join("；"));
+}
+
+function normalizeImageType(mimeType, fileName) {
+  const normalizedMime = String(mimeType || "").trim().toLowerCase();
+  const normalizedName = String(fileName || "").trim().toLowerCase();
+  const extension = normalizedName.includes(".") ? normalizedName.split(".").pop() : "";
+  const rawType = normalizedMime || extension;
+  const typeMap = {
+    "image/png": "png",
+    "image/jpeg": "jpeg",
+    "image/jpg": "jpeg",
+    "image/gif": "gif",
+    "image/webp": "webp",
+    png: "png",
+    jpg: "jpeg",
+    jpeg: "jpeg",
+    gif: "gif",
+    webp: "webp"
+  };
+  const imageType = typeMap[rawType] || typeMap[extension];
+
+  if (!imageType) {
+    throw new Error(`不支持的图片类型：mime=${mimeType || "unknown"} file=${fileName || "unknown"}，当前支持 png/jpeg/gif/webp`);
+  }
+
+  return imageType;
 }
 
 function encodeBytesToBase64(bytes) {

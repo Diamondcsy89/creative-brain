@@ -273,7 +273,9 @@
         }
 
         appendStatus(`已选择文件：${file.name}`);
-        appendStatus(`文件类型：${file.type || "unknown"}`);
+        const imageType = normalizeImageType(file.type, file.name);
+        appendStatus(`原始 file.type：${file.type || "unknown"}`);
+        appendStatus(`规范化 imageType：${imageType}`);
         const buffer = await file.arrayBuffer();
         const bytes = new Uint8Array(buffer);
         const dimensions = await readImageDimensions(file);
@@ -285,11 +287,38 @@
         return {
           fileName: file.name,
           mimeType: file.type,
+          imageType,
           width: dimensions ? dimensions.width : 0,
           height: dimensions ? dimensions.height : 0,
           bytes: Array.from(bytes),
           base64: arrayBufferToBase64(buffer)
         };
+      }
+
+      function normalizeImageType(mimeType, fileName) {
+        const normalizedMime = String(mimeType || "").trim().toLowerCase();
+        const normalizedName = String(fileName || "").trim().toLowerCase();
+        const extension = normalizedName.includes(".") ? normalizedName.split(".").pop() : "";
+        const rawType = normalizedMime || extension;
+        const typeMap = {
+          "image/png": "png",
+          "image/jpeg": "jpeg",
+          "image/jpg": "jpeg",
+          "image/gif": "gif",
+          "image/webp": "webp",
+          png: "png",
+          jpg: "jpeg",
+          jpeg: "jpeg",
+          gif: "gif",
+          webp: "webp"
+        };
+        const imageType = typeMap[rawType] || typeMap[extension];
+
+        if (!imageType) {
+          throw new Error(`不支持的图片类型：${mimeType || fileName || "unknown"}，当前支持 PNG / JPG / GIF / WEBP`);
+        }
+
+        return imageType;
       }
 
       async function readImageDimensions(file) {

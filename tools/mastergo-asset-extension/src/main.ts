@@ -142,7 +142,10 @@ async function replaceTemplateText(payload) {
 
 async function replaceProductNameImages(payload) {
   const bytes = getImageBytes(payload);
-  const imageHash = createImageHash(bytes);
+  postStatus(`main 已收到图片数据：${payload.fileName || "未命名文件"} / ${bytes.length} bytes`);
+  postStatus("正在创建 MasterGo 图片资源");
+  const imageHash = await createImageHash(bytes, payload);
+  postStatus(`imageHash 创建成功：${imageHash}`);
   const slots = getTemplateNodes().filter((node) => {
     const target = getTargetForNode(node);
     return target && PRODUCT_NAME_IMAGE_KEYS.has(target.key);
@@ -178,22 +181,94 @@ async function replaceProductNameImages(payload) {
 }
 
 function getImageBytes(payload) {
-  if (!payload || !payload.bytes || payload.bytes.length === 0) {
+  if (!payload) {
     throw new Error("请先选择一张产品名图片");
   }
 
-  return new Uint8Array(payload.bytes);
-}
-
-function createImageHash(bytes) {
-  if (typeof host.createImage !== "function") {
-    throw new Error("当前 MasterGo API 不支持 createImage，暂无法替换图片");
+  if (payload.bytes && payload.bytes.length > 0) {
+    return new Uint8Array(payload.bytes);
   }
 
-  const image = host.createImage(bytes);
-  if (image && image.hash) return image.hash;
+  if (payload.base64) {
+    return decodeBase64ToBytes(payload.base64);
+  }
+
+  throw new Error(`未收到有效图片数据：file=${payload.fileName || "unknown"} mime=${payload.mimeType || "unknown"}`);
+}
+
+function decodeBase64ToBytes(base64) {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+
+  return bytes;
+}
+
+async function createImageHash(bytes, payload) {
+  const attempts = [];
+  const byteInputs = [
+    { label: "Uint8Array", value: bytes },
+    { label: "ArrayBuffer", value: bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) }
+  ];
+
+  const createImageMethods = [
+    { name: "createImage", fn: host.createImage },
+    { name: "createImageAsync", fn: host.createImageAsync },
+    { name: "createImageFromBytes", fn: host.createImageFromBytes }
+  ].filter((method) => typeof method.fn === "function");
+
+  if (createImageMethods.length === 0) {
+    throw new Error("当前 MasterGo API 未提供 createImage / createImageAsync / createImageFromBytes");
+  }
+
+  for (const method of createImageMethods) {
+    for (const input of byteInputs) {
+      try {
+        const image = await method.fn.call(host, input.value);
+        const imageHash = extractImageHash(image);
+        attempts.push(`${method.name}(${input.label}) => ${describeImageResult(image)}`);
+
+        if (imageHash) {
+          return imageHash;
+        }
+      } catch (error) {
+        attempts.push(`${method.name}(${input.label}) failed: ${getErrorMessage(error)}`);
+      }
+    }
+  }
+
+  throw new Error([
+    "图片创建失败，未获得 imageHash",
+    `文件：${payload.fileName || "unknown"}`,
+    `类型：${payload.mimeType || "unknown"}`,
+    `字节数：${bytes.length}`,
+    `尝试记录：${attempts.join(" | ")}`
+  ].join("；"));
+}
+
+function extractImageHash(image) {
+  if (!image) return "";
   if (typeof image === "string") return image;
-  throw new Error("图片创建失败，未获得 imageHash");
+  if (typeof image.hash === "string") return image.hash;
+  if (typeof image.imageHash === "string") return image.imageHash;
+  if (typeof image.image_hash === "string") return image.image_hash;
+  if (typeof image.ref === "string") return image.ref;
+  if (typeof image.id === "string") return image.id;
+  if (image.data) {
+    return extractImageHash(image.data);
+  }
+  if (typeof image.getHash === "function") return image.getHash();
+  return "";
+}
+
+function describeImageResult(image) {
+  if (!image) return "empty result";
+  if (typeof image === "string") return `string:${image.slice(0, 12)}`;
+  const keys = Object.keys(image);
+  return `object keys:${keys.length > 0 ? keys.join(",") : "none"}`;
 }
 
 function applyContainImageToSlot(slot, imageHash) {

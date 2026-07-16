@@ -15,13 +15,14 @@ const TEMPLATE_TARGETS = [
   { key: "productNameImageSm", marker: "@product-name-image-sm", label: "产品名图片小槽位", replaceable: false }
 ];
 const TEMPLATE_MATCH_TARGETS = [...TEMPLATE_TARGETS].sort((a, b) => b.marker.length - a.marker.length);
+const PRODUCT_NAME_IMAGE_KEYS = new Set(["productNameImageLg", "productNameImageMd", "productNameImageSm"]);
 
 try {
   if (!host) {
     throw new Error("未检测到 MasterGo 插件运行环境");
   }
 
-  host.showUI(__html__, { width: 380, height: 620 });
+  host.showUI(__html__, { width: 380, height: 720 });
   registerMessageHandlers(handlePluginMessage);
   postStatus("插件 UI 已连接");
 } catch (error) {
@@ -33,7 +34,7 @@ try {
 async function handlePluginMessage(rawMessage) {
   try {
     const message = normalizeMessage(rawMessage);
-    if (!message || !["scan-template-layers", "replace-template-text"].includes(message.type)) return;
+    if (!message || !["scan-template-layers", "replace-template-text", "replace-product-name-image"].includes(message.type)) return;
 
     if (message.requestId && handledRequestIds.has(message.requestId)) {
       return;
@@ -54,6 +55,13 @@ async function handlePluginMessage(rawMessage) {
       const replaceResult = await replaceTemplateText(message.payload);
       postReplaceResult(replaceResult);
       notify("模板文本已替换");
+      return;
+    }
+
+    if (message.type === "replace-product-name-image") {
+      const imageResult = await replaceProductNameImages(message.payload);
+      postImageReplaceResult(imageResult);
+      notify("产品名图片已替换");
     }
   } catch (error) {
     const messageText = `操作失败：${getErrorMessage(error)}`;
@@ -130,6 +138,128 @@ async function replaceTemplateText(payload) {
   }
 
   return summary;
+}
+
+async function replaceProductNameImages(payload) {
+  const bytes = getImageBytes(payload);
+  const imageHash = createImageHash(bytes);
+  const slots = getTemplateNodes().filter((node) => {
+    const target = getTargetForNode(node);
+    return target && PRODUCT_NAME_IMAGE_KEYS.has(target.key);
+  });
+
+  const summary = {
+    found: slots.length,
+    replaced: 0,
+    skipped: 0,
+    skippedByMarker: createEmptyCounts(),
+    replacedByMarker: createEmptyCounts(),
+    notes: []
+  };
+
+  for (const slot of slots) {
+    const target = getTargetForNode(slot);
+
+    try {
+      const mode = applyContainImageToSlot(slot, imageHash);
+      summary.replaced += 1;
+      summary.replacedByMarker[target.marker] += 1;
+      if (mode === "fallback-node") {
+        summary.notes.push(`${target.marker}: 已创建图片节点 "${getNodeName(slot)} / image"`);
+      }
+    } catch (error) {
+      summary.skipped += 1;
+      summary.skippedByMarker[target.marker] += 1;
+      summary.notes.push(`${target.marker}: 替换失败 "${getNodeName(slot)}" / ${getErrorMessage(error)}`);
+    }
+  }
+
+  return summary;
+}
+
+function getImageBytes(payload) {
+  if (!payload || !payload.bytes || payload.bytes.length === 0) {
+    throw new Error("请先选择一张产品名图片");
+  }
+
+  return new Uint8Array(payload.bytes);
+}
+
+function createImageHash(bytes) {
+  if (typeof host.createImage !== "function") {
+    throw new Error("当前 MasterGo API 不支持 createImage，暂无法替换图片");
+  }
+
+  const image = host.createImage(bytes);
+  if (image && image.hash) return image.hash;
+  if (typeof image === "string") return image;
+  throw new Error("图片创建失败，未获得 imageHash");
+}
+
+function applyContainImageToSlot(slot, imageHash) {
+  if (canSetImageFill(slot)) {
+    try {
+      slot.fills = [createContainImagePaint(imageHash)];
+      return "fill";
+    } catch (error) {
+      console.log(`直接填充图片失败，尝试创建图片节点：${getErrorMessage(error)}`);
+    }
+  }
+
+  createFallbackImageNode(slot, imageHash);
+  return "fallback-node";
+}
+
+function canSetImageFill(node) {
+  return "fills" in node;
+}
+
+function createContainImagePaint(imageHash) {
+  return {
+    type: "IMAGE",
+    scaleMode: "FIT",
+    imageHash
+  };
+}
+
+function createFallbackImageNode(slot, imageHash) {
+  if (typeof host.createRectangle !== "function") {
+    throw new Error("槽位不支持图片填充，且当前 API 不支持创建图片矩形");
+  }
+
+  if (!slot.parent || typeof slot.parent.appendChild !== "function") {
+    throw new Error("槽位不支持图片填充，且无法在其父级创建图片节点");
+  }
+
+  const size = getNodeSize(slot);
+  const imageNode = host.createRectangle();
+  imageNode.name = `${getNodeName(slot)} / image`;
+  imageNode.x = slot.x || 0;
+  imageNode.y = slot.y || 0;
+  resizeNode(imageNode, size.width, size.height);
+  imageNode.fills = [createContainImagePaint(imageHash)];
+  slot.parent.appendChild(imageNode);
+}
+
+function getNodeSize(node) {
+  const width = typeof node.width === "number" ? node.width : 0;
+  const height = typeof node.height === "number" ? node.height : 0;
+
+  if (width <= 0 || height <= 0) {
+    throw new Error("槽位缺少有效宽高，无法放置图片");
+  }
+
+  return { width, height };
+}
+
+function resizeNode(node, width, height) {
+  if (typeof node.resize === "function") {
+    node.resize(width, height);
+    return;
+  }
+
+  node.width = width;
+  node.height = height;
 }
 
 function getTemplateNodes() {
@@ -369,6 +499,14 @@ function postReplaceResult(result) {
   postMessage({
     type: "replace-result",
     message: `已替换 ${result.replaced} 个文本图层，已跳过 ${result.skipped} 个文本图层`,
+    result
+  });
+}
+
+function postImageReplaceResult(result) {
+  postMessage({
+    type: "image-replace-result",
+    message: `找到 ${result.found} 个产品名图片槽位，成功替换 ${result.replaced} 个，跳过 ${result.skipped} 个`,
     result
   });
 }

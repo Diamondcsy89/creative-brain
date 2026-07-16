@@ -1,8 +1,8 @@
 {
-  "name": "xiaomi-asset-extension",
+  "name": "xiaomi-asset-replace-helper",
   "version": "0.1.0",
   "private": true,
-  "description": "MasterGo personal plugin MVP for generating editable multi-size ecommerce asset boards.",
+  "description": "MasterGo personal plugin MVP for replacing named template asset layers.",
   "scripts": {
     "build": "node scripts/build.mjs"
   },

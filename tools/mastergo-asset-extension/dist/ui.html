@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>小米图素延展助手</title>
+    <title>小米图素替换助手</title>
     <style>
       * {
         box-sizing: border-box;
@@ -38,8 +38,7 @@
         font-weight: 700;
       }
 
-      input,
-      select {
+      input {
         width: 100%;
         height: 38px;
         margin-top: 6px;
@@ -50,6 +49,27 @@
         padding: 0 10px;
         font: inherit;
         font-size: 13px;
+      }
+
+      button {
+        width: 100%;
+        height: 42px;
+        margin-top: 10px;
+        border: 1px solid #111;
+        border-radius: 4px;
+        background: #111;
+        color: #fff;
+        font-weight: 800;
+        cursor: pointer;
+      }
+
+      button.secondary {
+        background: #fff;
+        color: #111;
+      }
+
+      button:active {
+        transform: translateY(1px);
       }
 
       .eyebrow {
@@ -72,23 +92,22 @@
         line-height: 1.6;
       }
 
-      button {
-        width: 100%;
-        height: 42px;
-        margin-top: 16px;
-        border: 1px solid #111;
-        border-radius: 4px;
-        background: #111;
-        color: #fff;
-        font-weight: 800;
-        cursor: pointer;
+      .hint {
+        margin-top: 12px;
+        border: 1px solid #d8d8d8;
+        background: #f7f7f5;
+        padding: 10px;
+        color: #555;
+        font-size: 12px;
+        line-height: 1.6;
       }
 
-      button:active {
-        transform: translateY(1px);
+      .hint strong {
+        color: #111;
       }
 
-      #status {
+      #status,
+      #scanResult {
         min-height: 58px;
         margin-top: 12px;
         border-left: 2px solid #ff6900;
@@ -103,65 +122,96 @@
         border-left-color: #d92d20;
         color: #9a1c14;
       }
+
+      #scanResult {
+        min-height: 36px;
+        border-left-color: #cfcfcf;
+        white-space: pre-line;
+      }
     </style>
   </head>
   <body>
     <main>
       <section>
-        <p class="eyebrow">xiaomi-asset-extension</p>
-        <h1>小米图素延展助手</h1>
-        <p class="body">根据合作方尺寸规范生成可编辑的多尺寸图素工作画板。</p>
+        <p class="eyebrow">xiaomi-asset-replace-helper</p>
+        <h1>小米图素替换助手</h1>
+        <p class="body">扫描当前页面已有模板图层，并按固定命名批量替换文本内容。</p>
 
-        <label for="partner">合作方选择</label>
-        <select id="partner">
-          <option value="partner-xiaomi-demo">partner-xiaomi-demo</option>
-        </select>
+        <label for="campaignName">活动名称</label>
+        <input id="campaignName" value="小米商城活动" />
 
-        <label for="sizeGroup">尺寸组选择</label>
-        <select id="sizeGroup">
-          <option value="xiaomi-demo-core">小米 Demo 基础三图</option>
-        </select>
+        <label for="productName">产品名称</label>
+        <input id="productName" value="Xiaomi 智能产品" />
 
-        <label for="projectName">项目名称</label>
-        <input id="projectName" value="xiaomi-campaign" />
+        <label for="title">主标题</label>
+        <input id="title" value="小米商城会员专属礼遇" />
 
-        <label for="headline">主标题</label>
-        <input id="headline" value="小米商城会员专属礼遇" />
-
-        <label for="subheadline">副标题</label>
-        <input id="subheadline" value="为电商视觉快速延展多尺寸可编辑画板" />
+        <label for="subtitle">副标题</label>
+        <input id="subtitle" value="多尺寸模板一键替换活动视觉文案" />
 
         <label for="cta">CTA 文案</label>
         <input id="cta" value="立即查看" />
 
-        <button id="generate">生成图素画板</button>
+        <div class="hint">
+          <strong>横版 KV：</strong>@kv-horizontal<br />
+          <strong>竖版 KV：</strong>@kv-vertical<br />
+          <strong>商品图：</strong>@product-image<br />
+          第一版仅扫描图片占位图层，不做图片替换。
+        </div>
+
+        <button id="scan" class="secondary">扫描模板图层</button>
+        <button id="replace">替换文本内容</button>
+
+        <p id="scanResult">扫描结果将在这里显示</p>
         <p id="status">等待操作</p>
       </section>
     </main>
 
     <script>
       const statusNode = document.getElementById("status");
+      const scanResultNode = document.getElementById("scanResult");
       const statusLog = ["等待操作"];
 
-      document.getElementById("generate").addEventListener("click", () => {
+      document.getElementById("scan").addEventListener("click", () => {
         try {
-          const requestId = `generate-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-
-          resetStatus("已点击生成按钮");
+          resetStatus("已点击扫描模板图层");
           sendPluginMessage({
-            type: "generate-asset-boards",
-            requestId,
+            type: "scan-template-layers",
+            requestId: createRequestId("scan")
+          });
+          appendStatus("已发送扫描消息");
+        } catch (error) {
+          appendStatus(`扫描失败：${getErrorMessage(error)}`, true);
+        }
+      });
+
+      document.getElementById("replace").addEventListener("click", () => {
+        try {
+          resetStatus("已点击替换文本内容");
+          sendPluginMessage({
+            type: "replace-template-text",
+            requestId: createRequestId("replace"),
             payload: collectFormData()
           });
-          appendStatus("已发送生成消息");
+          appendStatus("已发送替换消息");
         } catch (error) {
-          appendStatus(`按钮点击失败：${getErrorMessage(error)}`, true);
+          appendStatus(`替换失败：${getErrorMessage(error)}`, true);
         }
       });
 
       window.addEventListener("message", (event) => {
         const message = normalizeIncomingMessage(event.data);
         if (!message) return;
+
+        if (message.type === "scan-result") {
+          appendStatus(message.message);
+          renderScanResult(message.result);
+        }
+
+        if (message.type === "replace-result") {
+          appendStatus(message.message);
+          renderReplaceResult(message.result);
+        }
 
         if (message.type === "status") {
           appendStatus(message.message);
@@ -172,19 +222,41 @@
         }
       });
 
+      function collectFormData() {
+        return {
+          campaignName: document.getElementById("campaignName").value,
+          productName: document.getElementById("productName").value,
+          title: document.getElementById("title").value,
+          subtitle: document.getElementById("subtitle").value,
+          cta: document.getElementById("cta").value
+        };
+      }
+
+      function renderScanResult(result) {
+        scanResultNode.textContent = formatCounts(result.counts, `共找到 ${result.total} 个可替换图层`);
+      }
+
+      function renderReplaceResult(result) {
+        const notes = result.notes.length > 0 ? `\n\n提示：\n${result.notes.slice(0, 6).join("\n")}` : "";
+        scanResultNode.textContent = [
+          `已替换：${result.replaced}`,
+          `已跳过：${result.skipped}`,
+          "",
+          formatCounts(result.replacedByMarker, "替换统计")
+        ].join("\n") + notes;
+      }
+
+      function formatCounts(counts, title) {
+        const lines = Object.keys(counts).map((key) => `${key}: ${counts[key]}`);
+        return [title, ...lines].join("\n");
+      }
+
       function sendPluginMessage(message) {
         window.parent.postMessage({ pluginMessage: message }, "*");
       }
 
-      function collectFormData() {
-        return {
-          partnerId: document.getElementById("partner").value,
-          sizeGroupId: document.getElementById("sizeGroup").value,
-          projectName: document.getElementById("projectName").value,
-          headline: document.getElementById("headline").value,
-          subheadline: document.getElementById("subheadline").value,
-          cta: document.getElementById("cta").value
-        };
+      function createRequestId(prefix) {
+        return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
       }
 
       function normalizeIncomingMessage(data) {

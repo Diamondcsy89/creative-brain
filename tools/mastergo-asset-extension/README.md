@@ -77,9 +77,18 @@
 - 如果图片较长，则受最大宽度限制
 - 等价于 max-width + max-height 的安全框适配
 
-当前实现会在槽位同一父级下创建一个新的可见图片矩形，名称为原槽位名称 + ` / replaced-image`，并保留原槽位作为安全框，不会删除原槽位。
+当前实现会优先在槽位容器内部创建一个新的可见图片矩形，名称为原槽位名称 + ` / replaced-image`。如果 MasterGo 当前节点不支持插入子图层，则自动退回到槽位同一父级上方创建，并保留原槽位作为安全框。
 
 当前图片填充依据 `@mastergo/plugin-typings`：`mg.createImage(Uint8Array)` 返回 `Image`，图片引用使用 `image.href`，`ImagePaint` 使用 `imageRef` 字段并设置 `scaleMode: "FIT"`。
+
+推荐槽位结构：
+
+```text
+@product-name-image-md
+  └── current-image
+```
+
+替换时插件会保留 `@product-name-image-*` 槽位容器，先清理旧的自动生成 `replaced-image`，再隐藏槽位内旧图片图层，最后插入新的 `replaced-image`。
 
 产品名图片建议提前裁掉多余透明边距，这样 contain 适配后视觉大小更稳定。替换后仍可在 MasterGo 中手动调整图片大小和位置。
 

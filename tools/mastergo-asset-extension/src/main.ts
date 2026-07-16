@@ -157,6 +157,8 @@ async function replaceProductNameImages(payload) {
   const summary = {
     found: slots.length,
     replaced: 0,
+    cleaned: 0,
+    hidden: 0,
     skipped: 0,
     skippedByMarker: createEmptyCounts(),
     replacedByMarker: createEmptyCounts(),
@@ -169,8 +171,10 @@ async function replaceProductNameImages(payload) {
     try {
       const placedImage = createVisibleReplacementImage(slot, imageResource, payload);
       summary.replaced += 1;
+      summary.cleaned += placedImage.cleaned;
+      summary.hidden += placedImage.hidden;
       summary.replacedByMarker[target.marker] += 1;
-      summary.notes.push(`${target.marker}: ${getNodeName(slot)} ${formatSize(placedImage.slot)} -> ${formatSize(placedImage.image)}`);
+      summary.notes.push(`${target.marker}: ${getNodeName(slot)} ${formatSize(placedImage.slot)} -> ${formatSize(placedImage.image)} / 清理 ${placedImage.cleaned} / 隐藏 ${placedImage.hidden}`);
     } catch (error) {
       summary.skipped += 1;
       summary.skippedByMarker[target.marker] += 1;
@@ -436,17 +440,15 @@ function createVisibleReplacementImage(slot, imageResource, payload) {
     throw new Error("当前 API 不支持创建图片矩形");
   }
 
-  if (!slot.parent || typeof slot.parent.appendChild !== "function") {
-    throw new Error("无法在槽位父级创建图片节点");
-  }
-
   const slotBounds = getNodeBounds(slot);
   const imageSize = getUploadedImageSize(payload);
   const fitted = containRect(slotBounds, imageSize);
-  removeExistingReplacementImages(slot, `${getNodeName(slot)} / replaced-image`);
+  const replacementName = `${getNodeName(slot)} / replaced-image`;
+  const cleaned = removeExistingReplacementImages(slot);
+  const hidden = hideOldImageChildren(slot);
 
   const imageNode = host.createRectangle();
-  imageNode.name = `${getNodeName(slot)} / replaced-image`;
+  imageNode.name = replacementName;
   imageNode.x = fitted.x;
   imageNode.y = fitted.y;
   resizeNode(imageNode, fitted.width, fitted.height);
@@ -469,15 +471,38 @@ function createVisibleReplacementImage(slot, imageResource, payload) {
     throw new Error("已创建图片节点，但无法设置图片填充");
   }
 
-  slot.parent.appendChild(imageNode);
+  insertReplacementImage(slot, imageNode, fitted);
   bringNodeToFront(imageNode);
   postStatus(`已创建可见 replaced-image 图层：${imageNode.name}`);
 
   return {
     node: imageNode,
     slot: slotBounds,
-    image: fitted
+    image: fitted,
+    cleaned,
+    hidden
   };
+}
+
+function insertReplacementImage(slot, imageNode, fitted) {
+  if (slot.children && typeof slot.appendChild === "function") {
+    try {
+      imageNode.x = fitted.x - (typeof slot.x === "number" ? slot.x : 0);
+      imageNode.y = fitted.y - (typeof slot.y === "number" ? slot.y : 0);
+      slot.appendChild(imageNode);
+      return;
+    } catch (error) {
+      console.log(`插入槽位内部失败，改为插入同级：${getErrorMessage(error)}`);
+      imageNode.x = fitted.x;
+      imageNode.y = fitted.y;
+    }
+  }
+
+  if (!slot.parent || typeof slot.parent.appendChild !== "function") {
+    throw new Error("无法在槽位内部或父级创建图片节点");
+  }
+
+  slot.parent.appendChild(imageNode);
 }
 
 function createImageFillSmokeTest(slot, imageResource) {
@@ -548,20 +573,99 @@ function containRect(slotBounds, imageSize) {
   };
 }
 
-function removeExistingReplacementImages(slot, replacementName) {
-  const parent = slot.parent;
-  if (!parent || !parent.children) return;
+function removeExistingReplacementImages(slot) {
+  let count = 0;
+  const candidates = [];
 
-  const nodes = Array.from(parent.children).filter((node) => getNodeName(node) === replacementName);
-  for (const node of nodes) {
+  collectNodes(slot, (node) => {
+    if (node !== slot && isReplacementImageNode(node)) {
+      candidates.push(node);
+    }
+  });
+
+  if (slot.parent && slot.parent.children) {
+    for (const node of Array.from(slot.parent.children)) {
+      if (node !== slot && isReplacementImageNode(node)) {
+        candidates.push(node);
+      }
+    }
+  }
+
+  for (const node of dedupeNodes(candidates)) {
     try {
       if (typeof node.remove === "function") {
         node.remove();
+        count += 1;
       }
     } catch (error) {
       console.log(`移除旧 replaced-image 跳过：${getErrorMessage(error)}`);
     }
   }
+
+  return count;
+}
+
+function hideOldImageChildren(slot) {
+  if (!slot.children) return 0;
+
+  let count = 0;
+  collectNodes(slot, (node) => {
+    if (node === slot || isReplacementImageNode(node) || !isImageLikeNode(node)) return;
+
+    try {
+      node.visible = false;
+      count += 1;
+    } catch (error) {
+      try {
+        node.isVisible = false;
+        count += 1;
+      } catch (innerError) {
+        console.log(`隐藏旧图片图层跳过：${getErrorMessage(innerError)}`);
+      }
+    }
+  });
+
+  return count;
+}
+
+function collectNodes(root, visit) {
+  visit(root);
+  if (!root.children) return;
+
+  for (const child of Array.from(root.children)) {
+    collectNodes(child, visit);
+  }
+}
+
+function isReplacementImageNode(node) {
+  return getNodeName(node).includes("replaced-image");
+}
+
+function isImageLikeNode(node) {
+  const name = getNodeName(node).toLowerCase();
+  if (name.includes("current-image") || name.includes("old-image")) return true;
+  if (typeof node.type === "string" && node.type.toLowerCase().includes("image")) return true;
+  if (!node.fills) return false;
+
+  try {
+    const fills = Array.from(node.fills);
+    return fills.some((fill) => fill && fill.type === "IMAGE");
+  } catch (error) {
+    return false;
+  }
+}
+
+function dedupeNodes(nodes) {
+  const seen = new Set();
+  const result = [];
+
+  for (const node of nodes) {
+    if (seen.has(node)) continue;
+    seen.add(node);
+    result.push(node);
+  }
+
+  return result;
 }
 
 function bringNodeToFront(node) {
@@ -836,7 +940,7 @@ function postReplaceResult(result) {
 function postImageReplaceResult(result) {
   postMessage({
     type: "image-replace-result",
-    message: `找到 ${result.found} 个产品名图片槽位，已创建 ${result.replaced} 个 replaced-image 图层，跳过 ${result.skipped} 个`,
+    message: `找到 ${result.found} 个产品名图片槽位，已清理 ${result.cleaned} 个旧 replaced-image，已隐藏 ${result.hidden} 个旧图片图层，已插入 ${result.replaced} 个新产品名图片`,
     result
   });
 }

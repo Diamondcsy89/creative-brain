@@ -375,7 +375,9 @@
         const notes = result.notes.length > 0 ? `\n\n槽位明细：\n${result.notes.slice(0, 8).join("\n")}` : "";
         scanResultNode.textContent = [
           `找到 ${result.found} 个产品名图片槽位`,
-          `已创建 ${result.replaced} 个 replaced-image 图层`,
+          `已清理 ${result.cleaned} 个旧 replaced-image`,
+          `已隐藏 ${result.hidden} 个旧图片图层`,
+          `已插入 ${result.replaced} 个新产品名图片`,
           `已跳过：${result.skipped}`,
           "",
           formatCounts(result.replacedByMarker, "图片替换统计")

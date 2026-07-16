@@ -61,6 +61,22 @@
         font-weight: 800;
         cursor: pointer;
       }
+
+      #status {
+        min-height: 38px;
+        margin-top: 12px;
+        border-left: 2px solid #ff6900;
+        background: #f7f7f5;
+        padding: 9px 10px;
+        color: #555;
+        font-size: 12px;
+        line-height: 1.5;
+      }
+
+      #status.error {
+        border-left-color: #d92d20;
+        color: #9a1c14;
+      }
     </style>
   </head>
   <body>
@@ -70,17 +86,47 @@
         <h1>小米图素延展助手</h1>
         <p class="body">插件已启动</p>
         <button id="generate">生成测试画板</button>
+        <p id="status">等待操作</p>
       </section>
     </main>
 
     <script>
+      const statusNode = document.getElementById("status");
+
       document.getElementById("generate").addEventListener("click", () => {
-        parent.postMessage({
-          pluginMessage: {
-            type: "generate-test-board"
-          }
-        }, "*");
+        try {
+          setStatus("已点击生成按钮");
+          parent.postMessage({
+            pluginMessage: {
+              type: "generate-test-board"
+            }
+          }, "*");
+        } catch (error) {
+          setStatus(`按钮点击失败：${getErrorMessage(error)}`, true);
+        }
       });
+
+      window.addEventListener("message", (event) => {
+        const message = event.data && event.data.pluginMessage;
+        if (!message) return;
+
+        if (message.type === "status") {
+          setStatus(message.message);
+        }
+
+        if (message.type === "error") {
+          setStatus(message.message, true);
+        }
+      });
+
+      function setStatus(message, isError = false) {
+        statusNode.textContent = message;
+        statusNode.classList.toggle("error", isError);
+      }
+
+      function getErrorMessage(error) {
+        return error instanceof Error ? error.message : String(error);
+      }
     </script>
   </body>
 </html>

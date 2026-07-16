@@ -10,22 +10,30 @@ try {
   host.ui.onmessage = async (message) => {
     try {
       if (message.type === "generate-test-board") {
-        await generateTestBoard();
+        notify("收到生成指令");
+        postStatus("收到生成指令");
+        const frame = await generateTestBoard();
+        selectNode(frame);
         notify("测试画板已生成");
+        postStatus("测试画板已生成");
       }
     } catch (error) {
-      notify(`生成失败：${getErrorMessage(error)}`);
+      const messageText = `生成失败：${getErrorMessage(error)}`;
+      notify(messageText);
+      postError(messageText);
     }
   };
 } catch (error) {
-  notify(`插件启动失败：${getErrorMessage(error)}`);
+  const messageText = `插件启动失败：${getErrorMessage(error)}`;
+  notify(messageText);
+  postError(messageText);
 }
 
 async function generateTestBoard() {
   await loadFont();
 
   const frame = host.createFrame();
-  frame.name = "MasterGo 插件测试画板 / 750×360";
+  frame.name = "MasterGo Plugin Test Board";
   frame.resize(750, 360);
   frame.fills = [{ type: "SOLID", color: hexToRgb("#F7F7F5") }];
 
@@ -62,6 +70,8 @@ async function generateTestBoard() {
   if (host.viewport && host.viewport.scrollAndZoomIntoView) {
     host.viewport.scrollAndZoomIntoView([frame]);
   }
+
+  return frame;
 }
 
 async function loadFont() {
@@ -75,6 +85,24 @@ function notify(message) {
     return;
   }
   console.log(message);
+}
+
+function postStatus(message) {
+  if (host && host.ui && host.ui.postMessage) {
+    host.ui.postMessage({ type: "status", message });
+  }
+}
+
+function postError(message) {
+  if (host && host.ui && host.ui.postMessage) {
+    host.ui.postMessage({ type: "error", message });
+  }
+}
+
+function selectNode(node) {
+  if (host.currentPage) {
+    host.currentPage.selection = [node];
+  }
 }
 
 function getErrorMessage(error) {

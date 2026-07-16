@@ -147,7 +147,8 @@ async function replaceProductNameImages(payload) {
   postStatus(`main 规范化 imageType：${imageType}`);
   postStatus("正在创建 MasterGo 图片资源");
   const imageResource = await createImageResource(bytes, payload, imageType);
-  postStatus(`imageHash 创建成功：${imageResource.hash}`);
+  postStatus("图片创建成功");
+  postStatus(`image href: ${imageResource.href || imageResource.ref}`);
   const slots = getTemplateNodes().filter((node) => {
     const target = getTargetForNode(node);
     return target && PRODUCT_NAME_IMAGE_KEYS.has(target.key);
@@ -214,11 +215,11 @@ async function createImageResource(bytes, payload, imageType) {
   const base64 = payload.base64 || encodeBytesToBase64(bytes);
   const dataUrl = `data:${payload.mimeType || "image/png"};base64,${base64}`;
   const byteInputs = [
+    { label: "Uint8Array", value: bytes },
     { label: "ObjectTypeDataUint8Array", value: { type: imageType, data: bytes } },
     { label: "ObjectTypeDataArrayBuffer", value: { type: imageType, data: bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) } },
     { label: "ObjectTypeBytesUint8Array", value: { type: imageType, bytes } },
     { label: "ObjectTypeBase64", value: { type: imageType, base64 } },
-    { label: "Uint8Array", value: bytes },
     { label: "ArrayBuffer", value: bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) },
     { label: "NumberArray", value: Array.from(bytes) },
     { label: "Base64", value: base64 },
@@ -243,13 +244,14 @@ async function createImageResource(bytes, payload, imageType) {
       try {
         const image = await method.fn.call(host, input.value);
         const description = describeImageResult(image);
-        const imageHash = await extractImageHash(image);
+        const imageRef = await extractImageRef(image);
         attempts.push(`${method.name}(${input.label}) => ${description}`);
         postStatus(`图片创建返回值：${method.name}(${input.label}) => ${description}`);
 
-        if (imageHash) {
+        if (imageRef) {
           return {
-            hash: imageHash,
+            ref: imageRef,
+            href: getImageHref(image),
             raw: image,
             debug: attempts
           };
@@ -263,7 +265,7 @@ async function createImageResource(bytes, payload, imageType) {
   }
 
   throw new Error([
-    "图片创建失败，未获得 imageHash",
+    "图片创建失败，未获得 MasterGo 图片引用 href/ref/hash",
     `文件：${payload.fileName || "unknown"}`,
     `原始类型：${payload.mimeType || "unknown"}`,
     `规范化类型：${imageType}`,
@@ -310,10 +312,10 @@ function encodeBytesToBase64(bytes) {
   return btoa(binary);
 }
 
-async function extractImageHash(image) {
+async function extractImageRef(image) {
   if (!image) return "";
   if (typeof image === "string") return image;
-  const directFields = ["imageHash", "hash", "image_hash", "ref", "id", "imageId", "imageID", "resourceId", "resourceID", "key", "value"];
+  const directFields = ["href", "imageHref", "imageURL", "imageUrl", "imageRef", "ref", "imageHash", "hash", "image_hash", "id", "imageId", "imageID", "resourceId", "resourceID", "key", "value"];
 
   for (const field of directFields) {
     const value = safeReadProperty(image, field);
@@ -321,7 +323,7 @@ async function extractImageHash(image) {
   }
 
   if (image.data) {
-    return extractImageHash(image.data);
+    return extractImageRef(image.data);
   }
 
   const getHash = safeReadProperty(image, "getHash");
@@ -339,10 +341,16 @@ async function extractImageHash(image) {
   const toJSON = safeReadProperty(image, "toJSON");
   if (typeof toJSON === "function") {
     const value = toJSON.call(image);
-    return extractImageHash(value);
+    return extractImageRef(value);
   }
 
   return "";
+}
+
+function getImageHref(image) {
+  if (!image || typeof image !== "object") return "";
+  const value = safeReadProperty(image, "href");
+  return isUsableHashValue(value) ? String(value) : "";
 }
 
 function safeReadProperty(source, property) {
@@ -430,13 +438,18 @@ function createContainImagePaints(imageResource) {
     type: "IMAGE",
     scaleMode: "FIT"
   };
+  const ref = imageResource.ref;
+  const href = imageResource.href || ref;
 
   return [
-    { ...base, imageHash: imageResource.hash },
-    { ...base, hash: imageResource.hash },
-    { ...base, imageId: imageResource.hash },
-    { ...base, imageRef: imageResource.hash },
-    { ...base, image: imageResource.raw }
+    { ...base, href },
+    { ...base, imageHref: href },
+    { ...base, imageRef: href },
+    { ...base, ref: href },
+    { ...base, image: imageResource.raw },
+    { ...base, imageHash: ref },
+    { ...base, hash: ref },
+    { ...base, imageId: ref }
   ];
 }
 

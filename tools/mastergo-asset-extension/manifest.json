@@ -3,7 +3,7 @@
   "id": "xiaomi-asset-extension",
   "api": "1.0.0",
   "main": "dist/main.js",
-  "ui": "src/ui.html",
+  "ui": "dist/ui.html",
   "editorType": ["figma", "mastergo"],
   "permissions": []
 }

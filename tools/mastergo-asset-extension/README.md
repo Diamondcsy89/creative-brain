@@ -77,18 +77,26 @@
 - 如果图片较长，则受最大宽度限制
 - 等价于 max-width + max-height 的安全框适配
 
-当前实现会优先在槽位容器内部创建一个新的可见图片矩形，名称为原槽位名称 + ` / replaced-image`。如果 MasterGo 当前节点不支持插入子图层，则自动退回到槽位同一父级上方创建，并保留原槽位作为安全框。
+当前实现会优先递归查找槽位内部的 `current-image`，并直接替换 `current-image` 本身的图片填充。这样会保留它的位置、尺寸、名称和父级关系，不使用外层 `@product-name-image-*` 容器尺寸作为最终图片尺寸。
+
+只有当 `current-image` 无法直接设置图片填充时，插件才会在 `current-image` 的同一父级创建新的可见图片矩形，名称为原槽位名称 + ` / replaced-image`。备用图层会基于 `current-image` 的 x、y、width、height 做 contain 适配，不使用页面绝对坐标撑大父级组。
 
 当前图片填充依据 `@mastergo/plugin-typings`：`mg.createImage(Uint8Array)` 返回 `Image`，图片引用使用 `image.href`，`ImagePaint` 使用 `imageRef` 字段并设置 `scaleMode: "FIT"`。
 
 推荐槽位结构：
 
 ```text
+@product-name-image-lg
+  └── current-image
+
 @product-name-image-md
+  └── current-image
+
+@product-name-image-sm
   └── current-image
 ```
 
-替换时插件会保留 `@product-name-image-*` 槽位容器，先清理旧的自动生成 `replaced-image`，再隐藏槽位内旧图片图层，最后插入新的 `replaced-image`。
+替换时插件会保留 `@product-name-image-*` 槽位容器，先清理旧的自动生成 `replaced-image`，再优先替换 `current-image`。如果只能使用备用图层，则隐藏旧的 `current-image` 并插入新的 `replaced-image`。
 
 产品名图片建议提前裁掉多余透明边距，这样 contain 适配后视觉大小更稳定。替换后仍可在 MasterGo 中手动调整图片大小和位置。
 

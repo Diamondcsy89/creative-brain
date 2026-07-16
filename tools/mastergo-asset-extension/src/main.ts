@@ -159,6 +159,8 @@ async function replaceProductNameImages(payload) {
     replaced: 0,
     cleaned: 0,
     hidden: 0,
+    filled: 0,
+    inserted: 0,
     skipped: 0,
     skippedByMarker: createEmptyCounts(),
     replacedByMarker: createEmptyCounts(),
@@ -173,8 +175,20 @@ async function replaceProductNameImages(payload) {
       summary.replaced += 1;
       summary.cleaned += placedImage.cleaned;
       summary.hidden += placedImage.hidden;
+      summary.filled += placedImage.mode === "直接替换 fills" ? 1 : 0;
+      summary.inserted += placedImage.mode === "创建 replaced-image" ? 1 : 0;
       summary.replacedByMarker[target.marker] += 1;
-      summary.notes.push(`${target.marker}: ${getNodeName(slot)} ${formatSize(placedImage.slot)} -> ${formatSize(placedImage.image)} / 清理 ${placedImage.cleaned} / 隐藏 ${placedImage.hidden}`);
+      summary.notes.push([
+        `${target.marker}: ${getNodeName(slot)}`,
+        `current-image: ${placedImage.currentImageFound ? "found" : "missing"}`,
+        `target ${formatPosition(placedImage.target)} ${formatSize(placedImage.target)}`,
+        `mode ${placedImage.mode}`,
+        `image ${formatSize(placedImage.image)}`,
+        `parent ${formatSize(placedImage.parentBefore)} -> ${formatSize(placedImage.parentAfter)}`,
+        `清理 ${placedImage.cleaned}`,
+        `隐藏 ${placedImage.hidden}`,
+        placedImage.parentWarning ? "警告：父级组尺寸发生变化，可能存在坐标系错误" : ""
+      ].filter(Boolean).join(" / "));
     } catch (error) {
       summary.skipped += 1;
       summary.skippedByMarker[target.marker] += 1;
@@ -436,16 +450,45 @@ function createImageFill(imageResource, mode) {
 }
 
 function createVisibleReplacementImage(slot, imageResource, payload) {
+  const currentImage = findCurrentImageNode(slot);
+  const targetNode = currentImage || slot;
+  const slotBounds = getNodeBounds(slot);
+  const targetBounds = getNodeBounds(targetNode);
+  const imageSize = getUploadedImageSize(payload);
+  const fitted = containRect(targetBounds, imageSize);
+  const replacementName = `${getNodeName(slot)} / replaced-image`;
+  const parentForDebug = targetNode.parent || slot.parent || slot;
+  const parentBefore = getOptionalNodeBounds(parentForDebug);
+  const cleaned = removeExistingReplacementImages(slot, targetNode);
+  const fills = createContainImagePaints(imageResource);
+
+  if (currentImage && canSetImageFills(currentImage)) {
+    try {
+      currentImage.fills = fills;
+      postStatus(`已直接替换 current-image 图片填充：${getNodeName(currentImage)}`);
+      const parentAfter = getOptionalNodeBounds(parentForDebug);
+
+      return {
+        node: currentImage,
+        slot: slotBounds,
+        target: targetBounds,
+        image: targetBounds,
+        parentBefore,
+        parentAfter,
+        parentWarning: hasUnexpectedParentResize(parentBefore, parentAfter),
+        cleaned,
+        hidden: 0,
+        currentImageFound: true,
+        mode: "直接替换 fills"
+      };
+    } catch (error) {
+      postStatus(`current-image 直接替换 fills 失败，改用 replaced-image：${getErrorMessage(error)}`);
+    }
+  }
+
   if (typeof host.createRectangle !== "function") {
     throw new Error("当前 API 不支持创建图片矩形");
   }
-
-  const slotBounds = getNodeBounds(slot);
-  const imageSize = getUploadedImageSize(payload);
-  const fitted = containRect(slotBounds, imageSize);
-  const replacementName = `${getNodeName(slot)} / replaced-image`;
-  const cleaned = removeExistingReplacementImages(slot);
-  const hidden = hideOldImageChildren(slot);
 
   const imageNode = host.createRectangle();
   imageNode.name = replacementName;
@@ -453,9 +496,8 @@ function createVisibleReplacementImage(slot, imageResource, payload) {
   imageNode.y = fitted.y;
   resizeNode(imageNode, fitted.width, fitted.height);
 
-  const paintAttempts = createContainImagePaints(imageResource);
   let filled = false;
-  for (const paint of paintAttempts) {
+  for (const paint of fills) {
     try {
       imageNode.fills = [paint];
       filled = true;
@@ -471,38 +513,44 @@ function createVisibleReplacementImage(slot, imageResource, payload) {
     throw new Error("已创建图片节点，但无法设置图片填充");
   }
 
-  insertReplacementImage(slot, imageNode, fitted);
+  insertReplacementImage(targetNode, imageNode, fitted);
+  const hidden = currentImage ? hideNode(currentImage) : hideOldImageChildren(slot);
   bringNodeToFront(imageNode);
   postStatus(`已创建可见 replaced-image 图层：${imageNode.name}`);
+  const parentAfter = getOptionalNodeBounds(parentForDebug);
 
   return {
     node: imageNode,
     slot: slotBounds,
+    target: targetBounds,
     image: fitted,
+    parentBefore,
+    parentAfter,
+    parentWarning: hasUnexpectedParentResize(parentBefore, parentAfter),
     cleaned,
-    hidden
+    hidden,
+    currentImageFound: Boolean(currentImage),
+    mode: "创建 replaced-image"
   };
 }
 
-function insertReplacementImage(slot, imageNode, fitted) {
-  if (slot.children && typeof slot.appendChild === "function") {
+function insertReplacementImage(targetNode, imageNode, fitted) {
+  const parent = targetNode.parent;
+  if (!parent || typeof parent.appendChild !== "function") {
+    throw new Error("无法在 current-image 父级创建图片节点");
+  }
+
+  imageNode.x = fitted.x;
+  imageNode.y = fitted.y;
+
+  if (targetNode.parent === parent) {
     try {
-      imageNode.x = fitted.x - (typeof slot.x === "number" ? slot.x : 0);
-      imageNode.y = fitted.y - (typeof slot.y === "number" ? slot.y : 0);
-      slot.appendChild(imageNode);
+      parent.appendChild(imageNode);
       return;
     } catch (error) {
-      console.log(`插入槽位内部失败，改为插入同级：${getErrorMessage(error)}`);
-      imageNode.x = fitted.x;
-      imageNode.y = fitted.y;
+      throw new Error(`无法插入 current-image 同父级：${getErrorMessage(error)}`);
     }
   }
-
-  if (!slot.parent || typeof slot.parent.appendChild !== "function") {
-    throw new Error("无法在槽位内部或父级创建图片节点");
-  }
-
-  slot.parent.appendChild(imageNode);
 }
 
 function createImageFillSmokeTest(slot, imageResource) {
@@ -573,7 +621,7 @@ function containRect(slotBounds, imageSize) {
   };
 }
 
-function removeExistingReplacementImages(slot) {
+function removeExistingReplacementImages(slot, targetNode) {
   let count = 0;
   const candidates = [];
 
@@ -591,6 +639,14 @@ function removeExistingReplacementImages(slot) {
     }
   }
 
+  if (targetNode && targetNode.parent && targetNode.parent.children) {
+    for (const node of Array.from(targetNode.parent.children)) {
+      if (node !== targetNode && isReplacementImageNode(node)) {
+        candidates.push(node);
+      }
+    }
+  }
+
   for (const node of dedupeNodes(candidates)) {
     try {
       if (typeof node.remove === "function") {
@@ -603,6 +659,23 @@ function removeExistingReplacementImages(slot) {
   }
 
   return count;
+}
+
+function findCurrentImageNode(slot) {
+  let result = null;
+
+  collectNodes(slot, (node) => {
+    if (result || node === slot) return;
+    if (getNodeName(node).trim().toLowerCase() === "current-image") {
+      result = node;
+    }
+  });
+
+  return result;
+}
+
+function canSetImageFills(node) {
+  return Boolean(node && "fills" in node);
 }
 
 function hideOldImageChildren(slot) {
@@ -626,6 +699,21 @@ function hideOldImageChildren(slot) {
   });
 
   return count;
+}
+
+function hideNode(node) {
+  try {
+    node.visible = false;
+    return 1;
+  } catch (error) {
+    try {
+      node.isVisible = false;
+      return 1;
+    } catch (innerError) {
+      console.log(`隐藏 current-image 跳过：${getErrorMessage(innerError)}`);
+      return 0;
+    }
+  }
 }
 
 function collectNodes(root, visit) {
@@ -682,8 +770,28 @@ function formatSize(bounds) {
   return `${round(bounds.width)}x${round(bounds.height)}`;
 }
 
+function formatPosition(bounds) {
+  return `x:${round(bounds.x)} y:${round(bounds.y)}`;
+}
+
 function round(value) {
   return Math.round(value * 100) / 100;
+}
+
+function getOptionalNodeBounds(node) {
+  try {
+    return getNodeBounds(node);
+  } catch (error) {
+    return { x: 0, y: 0, width: 0, height: 0 };
+  }
+}
+
+function hasUnexpectedParentResize(before, after) {
+  if (!before || !after) return false;
+  if (before.width <= 0 || before.height <= 0 || after.width <= 0 || after.height <= 0) return false;
+  const widthDelta = Math.abs(after.width - before.width);
+  const heightDelta = Math.abs(after.height - before.height);
+  return widthDelta > 2 || heightDelta > 2;
 }
 
 function resizeNode(node, width, height) {
@@ -940,7 +1048,7 @@ function postReplaceResult(result) {
 function postImageReplaceResult(result) {
   postMessage({
     type: "image-replace-result",
-    message: `找到 ${result.found} 个产品名图片槽位，已清理 ${result.cleaned} 个旧 replaced-image，已隐藏 ${result.hidden} 个旧图片图层，已插入 ${result.replaced} 个新产品名图片`,
+    message: `找到 ${result.found} 个产品名图片槽位，直接替换 fills ${result.filled} 个，创建 replaced-image ${result.inserted} 个，已跳过 ${result.skipped} 个`,
     result
   });
 }

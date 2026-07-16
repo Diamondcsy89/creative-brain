@@ -369,14 +369,17 @@
       }
 
       function renderImageReplaceResult(result) {
-        const notes = result.notes.length > 0 ? `\n\n提示：\n${result.notes.slice(0, 8).join("\n")}` : "";
+        const selectionHint = result.found < 3
+          ? "\n\n提示：当前只扫描到部分槽位。如果需要替换全部图素，请先选中包含所有图素的最外层模板容器。"
+          : "";
+        const notes = result.notes.length > 0 ? `\n\n槽位明细：\n${result.notes.slice(0, 8).join("\n")}` : "";
         scanResultNode.textContent = [
           `找到 ${result.found} 个产品名图片槽位`,
-          `成功替换：${result.replaced}`,
+          `已创建 ${result.replaced} 个 replaced-image 图层`,
           `已跳过：${result.skipped}`,
           "",
           formatCounts(result.replacedByMarker, "图片替换统计")
-        ].join("\n") + notes;
+        ].join("\n") + notes + selectionHint;
       }
 
       function formatCounts(counts, title) {

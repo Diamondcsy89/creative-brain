@@ -146,8 +146,8 @@ async function replaceProductNameImages(payload) {
   const bytes = getImageBytes(payload);
   postStatus(`main 已收到图片数据：${payload.fileName || "未命名文件"} / ${bytes.length} bytes`);
   postStatus("正在创建 MasterGo 图片资源");
-  const imageHash = await createImageHash(bytes, payload);
-  postStatus(`imageHash 创建成功：${imageHash}`);
+  const imageResource = await createImageResource(bytes, payload);
+  postStatus(`imageHash 创建成功：${imageResource.hash}`);
   const slots = getTemplateNodes().filter((node) => {
     const target = getTargetForNode(node);
     return target && PRODUCT_NAME_IMAGE_KEYS.has(target.key);
@@ -166,7 +166,7 @@ async function replaceProductNameImages(payload) {
     const target = getTargetForNode(slot);
 
     try {
-      const mode = applyContainImageToSlot(slot, imageHash);
+      const mode = applyContainImageToSlot(slot, imageResource);
       summary.replaced += 1;
       summary.replacedByMarker[target.marker] += 1;
       if (mode === "fallback-node") {
@@ -209,11 +209,19 @@ function decodeBase64ToBytes(base64) {
   return bytes;
 }
 
-async function createImageHash(bytes, payload) {
+async function createImageResource(bytes, payload) {
   const attempts = [];
+  const base64 = payload.base64 || encodeBytesToBase64(bytes);
+  const dataUrl = `data:${payload.mimeType || "image/png"};base64,${base64}`;
   const byteInputs = [
     { label: "Uint8Array", value: bytes },
-    { label: "ArrayBuffer", value: bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) }
+    { label: "ArrayBuffer", value: bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) },
+    { label: "NumberArray", value: Array.from(bytes) },
+    { label: "Base64", value: base64 },
+    { label: "DataURL", value: dataUrl },
+    { label: "ObjectData", value: { data: bytes, fileName: payload.fileName, mimeType: payload.mimeType } },
+    { label: "ObjectBytes", value: { bytes, fileName: payload.fileName, mimeType: payload.mimeType } },
+    { label: "ObjectBase64", value: { base64, fileName: payload.fileName, mimeType: payload.mimeType } }
   ];
 
   const createImageMethods = [
@@ -230,14 +238,22 @@ async function createImageHash(bytes, payload) {
     for (const input of byteInputs) {
       try {
         const image = await method.fn.call(host, input.value);
-        const imageHash = extractImageHash(image);
-        attempts.push(`${method.name}(${input.label}) => ${describeImageResult(image)}`);
+        const description = describeImageResult(image);
+        const imageHash = await extractImageHash(image);
+        attempts.push(`${method.name}(${input.label}) => ${description}`);
+        postStatus(`图片创建返回值：${method.name}(${input.label}) => ${description}`);
 
         if (imageHash) {
-          return imageHash;
+          return {
+            hash: imageHash,
+            raw: image,
+            debug: attempts
+          };
         }
       } catch (error) {
-        attempts.push(`${method.name}(${input.label}) failed: ${getErrorMessage(error)}`);
+        const message = `${method.name}(${input.label}) failed: ${getErrorMessage(error)}`;
+        attempts.push(message);
+        postStatus(`图片创建尝试失败：${message}`);
       }
     }
   }
@@ -251,39 +267,126 @@ async function createImageHash(bytes, payload) {
   ].join("；"));
 }
 
-function extractImageHash(image) {
+function encodeBytesToBase64(bytes) {
+  let binary = "";
+  const chunkSize = 8192;
+
+  for (let index = 0; index < bytes.length; index += chunkSize) {
+    const chunk = bytes.slice(index, index + chunkSize);
+    binary += String.fromCharCode.apply(null, Array.from(chunk));
+  }
+
+  return btoa(binary);
+}
+
+async function extractImageHash(image) {
   if (!image) return "";
   if (typeof image === "string") return image;
-  if (typeof image.hash === "string") return image.hash;
-  if (typeof image.imageHash === "string") return image.imageHash;
-  if (typeof image.image_hash === "string") return image.image_hash;
-  if (typeof image.ref === "string") return image.ref;
-  if (typeof image.id === "string") return image.id;
+  const directFields = ["imageHash", "hash", "image_hash", "ref", "id", "imageId", "imageID", "resourceId", "resourceID", "key", "value"];
+
+  for (const field of directFields) {
+    const value = safeReadProperty(image, field);
+    if (isUsableHashValue(value)) return String(value);
+  }
+
   if (image.data) {
     return extractImageHash(image.data);
   }
-  if (typeof image.getHash === "function") return image.getHash();
+
+  const getHash = safeReadProperty(image, "getHash");
+  if (typeof getHash === "function") {
+    const value = await getHash.call(image);
+    if (isUsableHashValue(value)) return String(value);
+  }
+
+  const getHashAsync = safeReadProperty(image, "getHashAsync");
+  if (typeof getHashAsync === "function") {
+    const value = await getHashAsync.call(image);
+    if (isUsableHashValue(value)) return String(value);
+  }
+
+  const toJSON = safeReadProperty(image, "toJSON");
+  if (typeof toJSON === "function") {
+    const value = toJSON.call(image);
+    return extractImageHash(value);
+  }
+
   return "";
+}
+
+function safeReadProperty(source, property) {
+  try {
+    return source[property];
+  } catch (error) {
+    return undefined;
+  }
+}
+
+function isUsableHashValue(value) {
+  return typeof value === "string" && value.length > 0 || typeof value === "number" && Number.isFinite(value);
 }
 
 function describeImageResult(image) {
   if (!image) return "empty result";
   if (typeof image === "string") return `string:${image.slice(0, 12)}`;
-  const keys = Object.keys(image);
-  return `object keys:${keys.length > 0 ? keys.join(",") : "none"}`;
+  if (typeof image !== "object") return `${typeof image}:${String(image)}`;
+  const keys = getDebugKeys(image);
+  const values = keys.slice(0, 12).map((key) => `${key}:${describeDebugValue(safeReadProperty(image, key))}`);
+  return `object keys:${keys.length > 0 ? keys.join(",") : "none"} values:${values.join(",") || "none"}`;
 }
 
-function applyContainImageToSlot(slot, imageHash) {
+function getDebugKeys(source) {
+  const keys = new Set();
+
+  for (const key of Object.keys(source)) {
+    keys.add(key);
+  }
+
+  try {
+    for (const key of Object.getOwnPropertyNames(source)) {
+      keys.add(key);
+    }
+  } catch (error) {
+    console.log(`读取图片返回值属性跳过：${getErrorMessage(error)}`);
+  }
+
+  try {
+    const prototype = Object.getPrototypeOf(source);
+    if (prototype) {
+      for (const key of Object.getOwnPropertyNames(prototype)) {
+        if (key !== "constructor") keys.add(key);
+      }
+    }
+  } catch (error) {
+    console.log(`读取图片返回值原型属性跳过：${getErrorMessage(error)}`);
+  }
+
+  return Array.from(keys);
+}
+
+function describeDebugValue(value) {
+  if (typeof value === "function") return "function";
+  if (typeof value === "string") return value.slice(0, 20);
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  if (!value) return String(value);
+  if (Array.isArray(value)) return `array(${value.length})`;
+  return typeof value;
+}
+
+function applyContainImageToSlot(slot, imageResource) {
   if (canSetImageFill(slot)) {
-    try {
-      slot.fills = [createContainImagePaint(imageHash)];
-      return "fill";
-    } catch (error) {
-      console.log(`直接填充图片失败，尝试创建图片节点：${getErrorMessage(error)}`);
+    const paintAttempts = createContainImagePaints(imageResource);
+    for (const paint of paintAttempts) {
+      try {
+        slot.fills = [paint];
+        return "fill";
+      } catch (error) {
+        console.log(`直接填充图片失败，尝试下一种 paint：${getErrorMessage(error)}`);
+      }
     }
   }
 
-  createFallbackImageNode(slot, imageHash);
+  createFallbackImageNode(slot, imageResource);
   return "fallback-node";
 }
 
@@ -291,15 +394,22 @@ function canSetImageFill(node) {
   return "fills" in node;
 }
 
-function createContainImagePaint(imageHash) {
-  return {
+function createContainImagePaints(imageResource) {
+  const base = {
     type: "IMAGE",
-    scaleMode: "FIT",
-    imageHash
+    scaleMode: "FIT"
   };
+
+  return [
+    { ...base, imageHash: imageResource.hash },
+    { ...base, hash: imageResource.hash },
+    { ...base, imageId: imageResource.hash },
+    { ...base, imageRef: imageResource.hash },
+    { ...base, image: imageResource.raw }
+  ];
 }
 
-function createFallbackImageNode(slot, imageHash) {
+function createFallbackImageNode(slot, imageResource) {
   if (typeof host.createRectangle !== "function") {
     throw new Error("槽位不支持图片填充，且当前 API 不支持创建图片矩形");
   }
@@ -314,7 +424,22 @@ function createFallbackImageNode(slot, imageHash) {
   imageNode.x = slot.x || 0;
   imageNode.y = slot.y || 0;
   resizeNode(imageNode, size.width, size.height);
-  imageNode.fills = [createContainImagePaint(imageHash)];
+  const paintAttempts = createContainImagePaints(imageResource);
+  let filled = false;
+  for (const paint of paintAttempts) {
+    try {
+      imageNode.fills = [paint];
+      filled = true;
+      break;
+    } catch (error) {
+      console.log(`图片节点填充失败，尝试下一种 paint：${getErrorMessage(error)}`);
+    }
+  }
+
+  if (!filled) {
+    throw new Error("已创建图片节点，但无法设置图片填充");
+  }
+
   slot.parent.appendChild(imageNode);
 }
 

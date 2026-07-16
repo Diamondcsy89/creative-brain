@@ -273,6 +273,7 @@
         }
 
         appendStatus(`已选择文件：${file.name}`);
+        appendStatus(`文件类型：${file.type || "unknown"}`);
         const buffer = await file.arrayBuffer();
         const bytes = new Uint8Array(buffer);
         const dimensions = await readImageDimensions(file);

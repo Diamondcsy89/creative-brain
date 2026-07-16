@@ -1,12 +1,13 @@
 const host = globalThis.mg || globalThis.mastergo || globalThis.figma;
 const handledRequestIds = new Set();
+let activeFont = null;
 
 try {
   if (!host) {
     throw new Error("未检测到 MasterGo 插件运行环境");
   }
 
-  host.showUI(__html__, { width: 320, height: 220 });
+  host.showUI(__html__, { width: 380, height: 560 });
   registerMessageHandlers(handlePluginMessage);
   postStatus("插件 UI 已连接");
 } catch (error) {
@@ -18,7 +19,7 @@ try {
 async function handlePluginMessage(rawMessage) {
   try {
     const message = normalizeMessage(rawMessage);
-    if (!message || message.type !== "generate-test-board") return;
+    if (!message || message.type !== "generate-asset-boards") return;
 
     if (message.requestId && handledRequestIds.has(message.requestId)) {
       return;
@@ -31,12 +32,12 @@ async function handlePluginMessage(rawMessage) {
     notify("收到生成指令");
     postStatus("main 已收到生成消息");
 
-    const frame = await generateTestBoard();
-    selectNode(frame);
-    scrollToNode(frame);
+    const frames = await generateAssetBoards(message.payload);
+    selectNodes(frames);
+    scrollToNodes(frames);
 
-    notify("测试画板已生成");
-    postStatus("测试画板已生成");
+    notify("图素画板已生成");
+    postStatus(`已生成 ${frames.length} 个图素画板`);
   } catch (error) {
     const messageText = `生成失败：${getErrorMessage(error)}`;
     notify(messageText);
@@ -77,47 +78,263 @@ function normalizeMessage(rawMessage) {
   return rawMessage;
 }
 
-async function generateTestBoard() {
+async function generateAssetBoards(payload) {
   await loadFontSafely();
 
+  const partner = getPartnerPreset(payload.partnerId);
+  const sizeGroup = getSizeGroup(partner, payload.sizeGroupId);
+  const projectName = normalizeText(payload.projectName, "xiaomi-campaign");
+  const content = {
+    projectName,
+    headline: normalizeText(payload.headline, "小米新品视觉主标题"),
+    subheadline: normalizeText(payload.subheadline, "高效生成多尺寸电商图素工作画板"),
+    cta: normalizeText(payload.cta, "立即查看")
+  };
+
+  const frames = [];
+  let nextY = 0;
+
+  for (const size of sizeGroup.sizes) {
+    const frame = createAssetBoard(size, content, nextY);
+    appendToCurrentPage(frame);
+    frames.push(frame);
+    nextY += size.height + 160;
+  }
+
+  return frames;
+}
+
+function createAssetBoard(size, content, y) {
   const frame = createFrameNode();
-  frame.name = "MasterGo Plugin Test Board";
-  resizeNode(frame, 750, 360);
+  frame.name = `${content.projectName} / ${size.name} / ${size.width}x${size.height}`;
   frame.x = 0;
-  frame.y = 0;
+  frame.y = y;
+  resizeNode(frame, size.width, size.height);
   setFills(frame, "#F7F7F5");
 
-  const border = host.createRectangle();
-  border.name = "Background / editable";
-  border.x = 0;
-  border.y = 0;
-  resizeNode(border, 750, 360);
-  setFills(border, "#FFFFFF");
-  border.strokes = [{ type: "SOLID", color: hexToRgb("#CFCFCF") }];
-  border.strokeWeight = 1;
-  frame.appendChild(border);
+  addRect(frame, {
+    name: "Background / editable",
+    x: 0,
+    y: 0,
+    width: size.width,
+    height: size.height,
+    fill: "#FFFFFF",
+    stroke: "#D8D8D8"
+  });
 
-  const accent = host.createRectangle();
-  accent.name = "Xiaomi Orange Accent / editable";
-  accent.x = 48;
-  accent.y = 52;
-  resizeNode(accent, 48, 4);
-  setFills(accent, "#FF6900");
-  frame.appendChild(accent);
+  addRect(frame, {
+    name: "Safe Area / editable guide",
+    ...size.safeArea,
+    fill: null,
+    stroke: "#FF6900"
+  });
 
-  const text = host.createText();
-  text.name = "Test Result Text / editable";
-  text.x = 48;
-  text.y = 132;
-  setTextFont(text);
-  text.fontSize = 36;
-  setFills(text, "#111111");
-  text.characters = "MasterGo 插件测试成功";
-  frame.appendChild(text);
+  addPlaceholder(frame, size.kvArea, "KV Placeholder / replaceable", "KV 占位区域");
+  addPlaceholder(frame, size.productArea, "Product Image Placeholder / replaceable", "商品图占位区域");
 
-  appendToCurrentPage(frame);
+  addText(frame, {
+    name: "Board Name / editable",
+    x: size.safeArea.x,
+    y: Math.max(16, size.safeArea.y - 36),
+    fontSize: getMetaFontSize(size),
+    color: "#666666",
+    characters: `${size.name} · ${size.width} × ${size.height}`
+  });
 
+  addText(frame, {
+    name: "Main Title / editable",
+    x: size.copyArea.x,
+    y: size.copyArea.y,
+    width: size.copyArea.width,
+    fontSize: getTitleFontSize(size),
+    color: "#111111",
+    characters: content.headline
+  });
+
+  addText(frame, {
+    name: "Subtitle / editable",
+    x: size.copyArea.x,
+    y: size.copyArea.y + getTitleFontSize(size) + 22,
+    width: size.copyArea.width,
+    fontSize: getBodyFontSize(size),
+    color: "#666666",
+    characters: content.subheadline
+  });
+
+  addRect(frame, {
+    name: "CTA Button Background / editable",
+    ...size.ctaArea,
+    fill: "#111111",
+    stroke: "#111111",
+    radius: 4
+  });
+
+  addText(frame, {
+    name: "CTA Text / editable",
+    x: size.ctaArea.x + 18,
+    y: size.ctaArea.y + Math.max(10, (size.ctaArea.height - getButtonFontSize(size)) / 2 - 1),
+    width: size.ctaArea.width - 36,
+    fontSize: getButtonFontSize(size),
+    color: "#FFFFFF",
+    characters: content.cta
+  });
+
+  addText(frame, {
+    name: "Export Name / editable",
+    x: size.safeArea.x,
+    y: size.height - Math.max(28, size.safeArea.y * 0.52),
+    width: size.safeArea.width,
+    fontSize: getMetaFontSize(size),
+    color: "#666666",
+    characters: `Export: ${formatExportName(size.exportNameTemplate, content.projectName)}`
+  });
+
+  addText(frame, {
+    name: "Dimension Label / editable",
+    x: Math.max(16, size.width - size.safeArea.x - 260),
+    y: size.height - Math.max(28, size.safeArea.y * 0.52),
+    width: 240,
+    fontSize: getMetaFontSize(size),
+    color: "#111111",
+    characters: `Size: ${size.width} × ${size.height}px`
+  });
+
+  addDimensionTicks(frame, size);
   return frame;
+}
+
+function addPlaceholder(frame, area, name, label) {
+  addRect(frame, {
+    name,
+    ...area,
+    fill: "#F7F7F5",
+    stroke: "#CFCFCF"
+  });
+
+  addText(frame, {
+    name: `${name} Label / editable`,
+    x: area.x + 18,
+    y: area.y + 18,
+    width: Math.max(80, area.width - 36),
+    fontSize: Math.max(12, Math.min(20, area.height * 0.07)),
+    color: "#666666",
+    characters: label
+  });
+}
+
+function addDimensionTicks(frame, size) {
+  const tickLength = Math.max(12, Math.min(28, size.height * 0.05));
+  const topY = Math.max(8, size.safeArea.y * 0.35);
+  const leftX = Math.max(8, size.safeArea.x * 0.35);
+
+  addLine(frame, "Width Guide / editable", size.safeArea.x, topY, size.safeArea.x + size.safeArea.width, topY, "#CFCFCF");
+  addLine(frame, "Width Guide Left Tick / editable", size.safeArea.x, topY - tickLength / 2, size.safeArea.x, topY + tickLength / 2, "#CFCFCF");
+  addLine(frame, "Width Guide Right Tick / editable", size.safeArea.x + size.safeArea.width, topY - tickLength / 2, size.safeArea.x + size.safeArea.width, topY + tickLength / 2, "#CFCFCF");
+  addLine(frame, "Height Guide / editable", leftX, size.safeArea.y, leftX, size.safeArea.y + size.safeArea.height, "#CFCFCF");
+  addLine(frame, "Height Guide Top Tick / editable", leftX - tickLength / 2, size.safeArea.y, leftX + tickLength / 2, size.safeArea.y, "#CFCFCF");
+  addLine(frame, "Height Guide Bottom Tick / editable", leftX - tickLength / 2, size.safeArea.y + size.safeArea.height, leftX + tickLength / 2, size.safeArea.y + size.safeArea.height, "#CFCFCF");
+}
+
+function addRect(frame, config) {
+  const rect = host.createRectangle();
+  rect.name = config.name;
+  rect.x = config.x;
+  rect.y = config.y;
+  resizeNode(rect, config.width, config.height);
+
+  if (config.fill) {
+    setFills(rect, config.fill);
+  } else {
+    rect.fills = [];
+  }
+
+  if (config.stroke) {
+    rect.strokes = [{ type: "SOLID", color: hexToRgb(config.stroke) }];
+    rect.strokeWeight = 1;
+  }
+
+  if (typeof config.radius === "number") {
+    rect.cornerRadius = config.radius;
+  }
+
+  frame.appendChild(rect);
+  return rect;
+}
+
+function addLine(frame, name, x1, y1, x2, y2, color) {
+  const line = host.createRectangle();
+  line.name = name;
+  line.x = Math.min(x1, x2);
+  line.y = Math.min(y1, y2);
+  resizeNode(line, Math.max(1, Math.abs(x2 - x1)), Math.max(1, Math.abs(y2 - y1)));
+  setFills(line, color);
+  frame.appendChild(line);
+}
+
+function addText(frame, config) {
+  const text = host.createText();
+  text.name = config.name;
+  text.x = config.x;
+  text.y = config.y;
+  if (config.width && typeof text.resize === "function") {
+    text.resize(config.width, Math.max(config.fontSize * 1.4, 24));
+  }
+  setTextFont(text);
+  text.fontSize = config.fontSize;
+  setFills(text, config.color);
+  text.characters = config.characters;
+  frame.appendChild(text);
+  return text;
+}
+
+function getPartnerPreset(partnerId) {
+  const partner = PARTNER_PRESETS.find((item) => item.id === partnerId);
+  if (!partner) {
+    throw new Error(`未找到合作方配置：${partnerId}`);
+  }
+  return partner;
+}
+
+function getSizeGroup(partner, sizeGroupId) {
+  const sizeGroup = partner.sizeGroups.find((item) => item.id === sizeGroupId);
+  if (!sizeGroup) {
+    throw new Error(`未找到尺寸组配置：${sizeGroupId}`);
+  }
+  return sizeGroup;
+}
+
+function normalizeText(value, fallback) {
+  if (typeof value !== "string") return fallback;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : fallback;
+}
+
+function formatExportName(template, projectName) {
+  return template.replace("{project}", slugify(projectName));
+}
+
+function slugify(value) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9\u4e00-\u9fa5]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "xiaomi-campaign";
+}
+
+function getTitleFontSize(size) {
+  return Math.max(28, Math.min(72, size.height * 0.12));
+}
+
+function getBodyFontSize(size) {
+  return Math.max(16, Math.min(28, size.height * 0.055));
+}
+
+function getButtonFontSize(size) {
+  return Math.max(14, Math.min(20, size.ctaArea.height * 0.34));
+}
+
+function getMetaFontSize(size) {
+  return Math.max(12, Math.min(18, size.height * 0.032));
 }
 
 function createFrameNode() {
@@ -159,8 +376,10 @@ function setFills(node, hex) {
 }
 
 function setTextFont(text) {
+  if (!activeFont) return;
+
   try {
-    text.fontName = { family: "Inter", style: "Bold" };
+    text.fontName = activeFont;
   } catch (error) {
     console.log(`字体设置跳过：${getErrorMessage(error)}`);
   }
@@ -179,6 +398,7 @@ async function loadFontSafely() {
   for (const font of fonts) {
     try {
       await host.loadFontAsync(font);
+      activeFont = font;
       return;
     } catch (error) {
       console.log(`字体加载跳过：${font.family} ${font.style} / ${getErrorMessage(error)}`);
@@ -206,15 +426,15 @@ function postError(message) {
   }
 }
 
-function selectNode(node) {
+function selectNodes(nodes) {
   if (host.currentPage && "selection" in host.currentPage) {
-    host.currentPage.selection = [node];
+    host.currentPage.selection = nodes;
   }
 }
 
-function scrollToNode(node) {
+function scrollToNodes(nodes) {
   if (host.viewport && typeof host.viewport.scrollAndZoomIntoView === "function") {
-    host.viewport.scrollAndZoomIntoView([node]);
+    host.viewport.scrollAndZoomIntoView(nodes);
   }
 }
 

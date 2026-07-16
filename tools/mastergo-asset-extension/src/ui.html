@@ -17,7 +17,7 @@
       }
 
       main {
-        padding: 18px;
+        padding: 16px;
       }
 
       section {
@@ -28,6 +28,28 @@
 
       p {
         margin: 0;
+      }
+
+      label {
+        display: block;
+        margin-top: 12px;
+        color: #555;
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      input,
+      select {
+        width: 100%;
+        height: 38px;
+        margin-top: 6px;
+        border: 1px solid #cfcfcf;
+        border-radius: 4px;
+        background: #fff;
+        color: #111;
+        padding: 0 10px;
+        font: inherit;
+        font-size: 13px;
       }
 
       .eyebrow {
@@ -62,6 +84,10 @@
         cursor: pointer;
       }
 
+      button:active {
+        transform: translateY(1px);
+      }
+
       #status {
         min-height: 58px;
         margin-top: 12px;
@@ -84,8 +110,31 @@
       <section>
         <p class="eyebrow">xiaomi-asset-extension</p>
         <h1>小米图素延展助手</h1>
-        <p class="body">插件已启动</p>
-        <button id="generate">生成测试画板</button>
+        <p class="body">根据合作方尺寸规范生成可编辑的多尺寸图素工作画板。</p>
+
+        <label for="partner">合作方选择</label>
+        <select id="partner">
+          <option value="partner-xiaomi-demo">partner-xiaomi-demo</option>
+        </select>
+
+        <label for="sizeGroup">尺寸组选择</label>
+        <select id="sizeGroup">
+          <option value="xiaomi-demo-core">小米 Demo 基础三图</option>
+        </select>
+
+        <label for="projectName">项目名称</label>
+        <input id="projectName" value="xiaomi-campaign" />
+
+        <label for="headline">主标题</label>
+        <input id="headline" value="小米商城会员专属礼遇" />
+
+        <label for="subheadline">副标题</label>
+        <input id="subheadline" value="为电商视觉快速延展多尺寸可编辑画板" />
+
+        <label for="cta">CTA 文案</label>
+        <input id="cta" value="立即查看" />
+
+        <button id="generate">生成图素画板</button>
         <p id="status">等待操作</p>
       </section>
     </main>
@@ -100,8 +149,9 @@
 
           resetStatus("已点击生成按钮");
           sendPluginMessage({
-            type: "generate-test-board",
-            requestId
+            type: "generate-asset-boards",
+            requestId,
+            payload: collectFormData()
           });
           appendStatus("已发送生成消息");
         } catch (error) {
@@ -124,6 +174,17 @@
 
       function sendPluginMessage(message) {
         window.parent.postMessage({ pluginMessage: message }, "*");
+      }
+
+      function collectFormData() {
+        return {
+          partnerId: document.getElementById("partner").value,
+          sizeGroupId: document.getElementById("sizeGroup").value,
+          projectName: document.getElementById("projectName").value,
+          headline: document.getElementById("headline").value,
+          subheadline: document.getElementById("subheadline").value,
+          cta: document.getElementById("cta").value
+        };
       }
 
       function normalizeIncomingMessage(data) {

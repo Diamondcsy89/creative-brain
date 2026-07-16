@@ -1,0 +1,9 @@
+{
+  "name": "小米图素延展助手",
+  "id": "xiaomi-asset-extension",
+  "api": "1.0.0",
+  "main": "dist/main.js",
+  "ui": "src/ui.html",
+  "editorType": ["figma", "mastergo"],
+  "permissions": []
+}

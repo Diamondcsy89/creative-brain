@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>小米图素延展助手</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: #f7f7f5;
+        color: #111;
+        font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      main {
+        padding: 18px;
+      }
+
+      header {
+        border: 1px solid #cfcfcf;
+        background: #fff;
+        padding: 14px;
+      }
+
+      .eyebrow {
+        margin: 0;
+        color: #ff6900;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        margin: 8px 0 0;
+        font-size: 18px;
+      }
+
+      form {
+        display: grid;
+        gap: 12px;
+        margin-top: 14px;
+      }
+
+      label {
+        display: grid;
+        gap: 6px;
+        font-size: 12px;
+        font-weight: 700;
+        color: #555;
+      }
+
+      input,
+      select {
+        width: 100%;
+        border: 1px solid #cfcfcf;
+        border-radius: 4px;
+        background: #fff;
+        color: #111;
+        font: inherit;
+        padding: 10px;
+        outline: none;
+      }
+
+      input:focus,
+      select:focus {
+        border-color: #ff6900;
+      }
+
+      button {
+        height: 44px;
+        border: 1px solid #111;
+        border-radius: 4px;
+        background: #111;
+        color: #fff;
+        font-weight: 800;
+        cursor: pointer;
+      }
+
+      .note {
+        margin: 12px 0 0;
+        border-left: 2px solid #ff6900;
+        background: #fff;
+        padding: 10px 12px;
+        color: #666;
+        font-size: 12px;
+        line-height: 1.6;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <p class="eyebrow">xiaomi-asset-extension</p>
+        <h1>小米图素延展助手</h1>
+      </header>
+
+      <form id="generator-form">
+        <label>
+          合作方选择
+          <select id="partner"></select>
+        </label>
+
+        <label>
+          尺寸组选择
+          <select id="size-group"></select>
+        </label>
+
+        <label>
+          项目名称
+          <input id="project-name" value="xiaomi-demo-campaign" />
+        </label>
+
+        <label>
+          主标题
+          <input id="title" value="小米商城会员限定礼遇" />
+        </label>
+
+        <label>
+          副标题
+          <input id="subtitle" value="随行礼盒，多场景轻松出行" />
+        </label>
+
+        <label>
+          CTA 文案
+          <input id="cta" value="立即查看" />
+        </label>
+
+        <button type="submit">生成多尺寸图素画板</button>
+      </form>
+
+      <p class="note">第一版生成可编辑工作画板和规范占位。KV 与商品图请先手动拖入对应占位区域。</p>
+    </main>
+
+    <script>
+      let presets = [];
+
+      const partnerSelect = document.getElementById("partner");
+      const sizeGroupSelect = document.getElementById("size-group");
+      const form = document.getElementById("generator-form");
+
+      parent.postMessage({ pluginMessage: { type: "get-presets" } }, "*");
+
+      window.onmessage = (event) => {
+        const message = event.data.pluginMessage;
+        if (!message || message.type !== "presets") return;
+        presets = message.presets;
+        renderPartners();
+        renderSizeGroups();
+      };
+
+      partnerSelect.addEventListener("change", renderSizeGroups);
+
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        parent.postMessage({
+          pluginMessage: {
+            type: "generate",
+            payload: {
+              partnerId: partnerSelect.value,
+              sizeGroupId: sizeGroupSelect.value,
+              projectName: document.getElementById("project-name").value,
+              title: document.getElementById("title").value,
+              subtitle: document.getElementById("subtitle").value,
+              cta: document.getElementById("cta").value
+            }
+          }
+        }, "*");
+      });
+
+      function renderPartners() {
+        partnerSelect.innerHTML = presets.map((partner) => (
+          `<option value="${partner.id}">${partner.displayName || partner.name}</option>`
+        )).join("");
+      }
+
+      function renderSizeGroups() {
+        const partner = presets.find((item) => item.id === partnerSelect.value) || presets[0];
+        if (!partner) return;
+        sizeGroupSelect.innerHTML = partner.sizeGroups.map((group) => (
+          `<option value="${group.id}">${group.name}</option>`
+        )).join("");
+      }
+    </script>
+  </body>
+</html>

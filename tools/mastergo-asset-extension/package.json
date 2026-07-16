@@ -1,0 +1,10 @@
+{
+  "name": "xiaomi-asset-extension",
+  "version": "0.1.0",
+  "private": true,
+  "description": "MasterGo personal plugin MVP for generating editable multi-size ecommerce asset boards.",
+  "scripts": {
+    "build": "node scripts/build.mjs"
+  },
+  "devDependencies": {}
+}

@@ -114,7 +114,7 @@ async function replaceTemplateText(payload) {
     }
 
     try {
-      await loadNodeFont(node);
+      await prepareTextNodeForReplacement(node);
       node.characters = value;
       summary.replaced += 1;
       summary.replacedByMarker[target.marker] += 1;
@@ -231,17 +231,81 @@ function isTextNode(node) {
   return node.type === "TEXT" || typeof node.characters === "string";
 }
 
-async function loadNodeFont(node) {
+async function prepareTextNodeForReplacement(node) {
   if (!host.loadFontAsync) return;
 
+  const fonts = collectTextFonts(node);
+  for (const font of fonts) {
+    await loadFontSafely(font);
+  }
+}
+
+function collectTextFonts(node) {
+  const fonts = [];
+
   const fontName = node.fontName;
-  if (!fontName || fontName === host.mixed || fontName === "mixed") {
-    throw new Error("文本图层包含混合字体，请先统一字体后重试");
+  if (isFontName(fontName)) {
+    fonts.push(fontName);
   }
 
-  if (fontName.family && fontName.style) {
-    await host.loadFontAsync(fontName);
+  if (typeof node.getStyledTextSegments === "function") {
+    try {
+      const segments = node.getStyledTextSegments(["fontName"]);
+      for (const segment of segments) {
+        if (isFontName(segment.fontName)) {
+          fonts.push(segment.fontName);
+        }
+      }
+    } catch (error) {
+      console.log(`读取文本样式段跳过：${getErrorMessage(error)}`);
+    }
   }
+
+  const firstCharacterFont = getFirstCharacterFont(node);
+  if (isFontName(firstCharacterFont)) {
+    fonts.push(firstCharacterFont);
+  }
+
+  return dedupeFonts(fonts);
+}
+
+function getFirstCharacterFont(node) {
+  if (typeof node.getRangeFontName !== "function") return null;
+
+  try {
+    const characters = typeof node.characters === "string" ? node.characters : "";
+    if (characters.length === 0) return null;
+    return node.getRangeFontName(0, 1);
+  } catch (error) {
+    console.log(`读取首字符字体跳过：${getErrorMessage(error)}`);
+    return null;
+  }
+}
+
+async function loadFontSafely(font) {
+  try {
+    await host.loadFontAsync(font);
+  } catch (error) {
+    console.log(`字体加载跳过：${font.family} ${font.style} / ${getErrorMessage(error)}`);
+  }
+}
+
+function isFontName(font) {
+  return Boolean(font && font !== host.mixed && font !== "mixed" && font.family && font.style);
+}
+
+function dedupeFonts(fonts) {
+  const seen = new Set();
+  const result = [];
+
+  for (const font of fonts) {
+    const id = `${font.family}/${font.style}`;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    result.push(font);
+  }
+
+  return result;
 }
 
 function createEmptyCounts() {
@@ -300,7 +364,7 @@ function postScanResult(result) {
 function postReplaceResult(result) {
   postMessage({
     type: "replace-result",
-    message: `已替换 ${result.replaced} 个文本图层，跳过 ${result.skipped} 个图层`,
+    message: `已替换 ${result.replaced} 个文本图层，已跳过 ${result.skipped} 个文本图层`,
     result
   });
 }

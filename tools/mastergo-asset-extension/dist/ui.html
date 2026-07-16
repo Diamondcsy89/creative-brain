@@ -239,8 +239,8 @@
       function renderReplaceResult(result) {
         const notes = result.notes.length > 0 ? `\n\n提示：\n${result.notes.slice(0, 6).join("\n")}` : "";
         scanResultNode.textContent = [
-          `已替换：${result.replaced}`,
-          `已跳过：${result.skipped}`,
+          `已替换 ${result.replaced} 个文本图层`,
+          `已跳过 ${result.skipped} 个文本图层`,
           "",
           formatCounts(result.replacedByMarker, "替换统计")
         ].join("\n") + notes;

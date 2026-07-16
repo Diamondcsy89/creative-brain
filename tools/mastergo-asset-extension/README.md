@@ -17,7 +17,7 @@
   - `@title`
   - `@subtitle`
   - `@cta`
-- 图片占位图层第一版只扫描统计，不做图片替换
+- 图片槽位和图片占位图层第一版只扫描统计，不做图片替换
 
 ## 模板命名规则
 
@@ -32,6 +32,9 @@
 @kv-horizontal
 @kv-vertical
 @product-image
+@product-name-image-lg
+@product-name-image-md
+@product-name-image-sm
 ```
 
 命名可以作为图层名的一部分，例如：
@@ -39,6 +42,56 @@
 ```text
 @title / PC Hero
 @product-image / Mobile Banner
+```
+
+## 产品名图片槽位
+
+产品名图片槽位不是按产品单独定尺寸，而是按图素版位定安全框。后续替换不同长宽比例的产品名图片时，应把图片等比适配进对应安全框。
+
+建议安全框：
+
+```text
+@product-name-image-lg：最大 360 × 64
+@product-name-image-md：最大 260 × 46
+@product-name-image-sm：最大 180 × 32
+```
+
+后续图片替换原则：
+
+- 保持原图比例
+- 不拉伸
+- 不裁切
+- 使用 contain 适配
+- 永远不超过槽位宽高
+- 如果图片较短，优先按高度适配
+- 如果图片较长，则受最大宽度限制
+- 等价于 max-width + max-height 的安全框适配
+
+图片适配规则：
+
+```text
+@kv-horizontal：cover，可裁切
+@kv-vertical：cover，可裁切
+@product-image：contain，完整展示
+@product-name-image-lg：contain，完整展示
+@product-name-image-md：contain，完整展示
+@product-name-image-sm：contain，完整展示
+```
+
+扫描结果示例：
+
+```text
+@product-name: 1
+@title: 1
+@subtitle: 1
+@cta: 1
+@price: 1
+@kv-horizontal: 2
+@kv-vertical: 1
+@product-image: 3
+@product-name-image-lg: 1
+@product-name-image-md: 2
+@product-name-image-sm: 4
 ```
 
 ## 本地运行

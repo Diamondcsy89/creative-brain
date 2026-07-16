@@ -11,8 +11,12 @@ const TEMPLATE_TARGETS = [
   { key: "price", marker: "@price", label: "价格", replaceable: false },
   { key: "kvHorizontal", marker: "@kv-horizontal", label: "横版 KV", replaceable: false },
   { key: "kvVertical", marker: "@kv-vertical", label: "竖版 KV", replaceable: false },
-  { key: "productImage", marker: "@product-image", label: "商品图", replaceable: false }
+  { key: "productImage", marker: "@product-image", label: "商品图", replaceable: false },
+  { key: "productNameImageLg", marker: "@product-name-image-lg", label: "产品名图片大槽位", replaceable: false },
+  { key: "productNameImageMd", marker: "@product-name-image-md", label: "产品名图片中槽位", replaceable: false },
+  { key: "productNameImageSm", marker: "@product-name-image-sm", label: "产品名图片小槽位", replaceable: false }
 ];
+const TEMPLATE_MATCH_TARGETS = [...TEMPLATE_TARGETS].sort((a, b) => b.marker.length - a.marker.length);
 
 try {
   if (!host) {
@@ -222,7 +226,7 @@ function walkNode(node, visit) {
 
 function getTargetForNode(node) {
   const name = getNodeName(node);
-  return TEMPLATE_TARGETS.find((target) => name.includes(target.marker));
+  return TEMPLATE_MATCH_TARGETS.find((target) => name.includes(target.marker));
 }
 
 function getNodeName(node) {

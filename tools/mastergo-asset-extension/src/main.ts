@@ -59,7 +59,7 @@ async function handlePluginMessage(rawMessage) {
 }
 
 function scanTemplateLayers() {
-  const nodes = getPageNodes();
+  const nodes = getTemplateNodes();
   const counts = createEmptyCounts();
   const matches = [];
 
@@ -78,7 +78,7 @@ function scanTemplateLayers() {
 }
 
 async function replaceTemplateText(payload) {
-  const nodes = getPageNodes();
+  const nodes = getTemplateNodes();
   const values = {
     "@product-name": normalizeText(payload.productName),
     "@title": normalizeText(payload.title),
@@ -128,22 +128,84 @@ async function replaceTemplateText(payload) {
   return summary;
 }
 
-function getPageNodes() {
-  if (!host.currentPage) {
-    throw new Error("未检测到当前页面");
-  }
-
-  if (typeof host.currentPage.findAll === "function") {
-    return host.currentPage.findAll((node) => Boolean(getTargetForNode(node)));
-  }
-
+function getTemplateNodes() {
+  const roots = getScanRoots();
   const result = [];
-  walkNode(host.currentPage, (node) => {
-    if (getTargetForNode(node)) {
-      result.push(node);
-    }
-  });
+
+  for (const root of roots) {
+    walkNode(root, (node) => {
+      if (getTargetForNode(node)) {
+        result.push(node);
+      }
+    });
+  }
+
   return result;
+}
+
+function getScanRoots() {
+  const selectedNodes = getSelectedNodes();
+  if (selectedNodes.length > 0) {
+    return selectedNodes;
+  }
+
+  const currentPage = getCurrentPage();
+  if (currentPage) {
+    return [currentPage];
+  }
+
+  throw new Error("请先选中一个模板容器，或打开一个包含模板图层的页面");
+}
+
+function getSelectedNodes() {
+  const candidates = [
+    () => getCurrentPage() && getCurrentPage().selection,
+    () => host.selection,
+    () => (typeof host.getSelection === "function" ? host.getSelection() : null),
+    () => host.editor && host.editor.selection,
+    () => host.document && host.document.selection
+  ];
+
+  for (const getCandidate of candidates) {
+    const nodes = readCandidateNodes(getCandidate);
+    if (nodes.length > 0) {
+      return nodes;
+    }
+  }
+
+  return [];
+}
+
+function getCurrentPage() {
+  const candidates = [
+    () => host.currentPage,
+    () => host.document && host.document.currentPage,
+    () => host.root && host.root.currentPage
+  ];
+
+  for (const getCandidate of candidates) {
+    try {
+      const page = getCandidate();
+      if (page) return page;
+    } catch (error) {
+      console.log(`读取当前页面跳过：${getErrorMessage(error)}`);
+    }
+  }
+
+  return null;
+}
+
+function readCandidateNodes(getCandidate) {
+  try {
+    const value = getCandidate();
+    if (!value) return [];
+    if (Array.isArray(value)) return value.filter(Boolean);
+    if (typeof value.length === "number") return Array.from(value).filter(Boolean);
+    return [value];
+  } catch (error) {
+    console.log(`读取选中图层跳过：${getErrorMessage(error)}`);
+    return [];
+  }
 }
 
 function walkNode(node, visit) {

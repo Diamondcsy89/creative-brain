@@ -12,12 +12,18 @@ const TEMPLATE_TARGETS = [
   { key: "kvHorizontal", marker: "@kv-horizontal", label: "横版 KV", replaceable: false },
   { key: "kvVertical", marker: "@kv-vertical", label: "竖版 KV", replaceable: false },
   { key: "productImage", marker: "@product-image", label: "商品图", replaceable: false },
-  { key: "productNameImageLg", marker: "@product-name-image-lg", label: "产品名图片大槽位", replaceable: false },
-  { key: "productNameImageMd", marker: "@product-name-image-md", label: "产品名图片中槽位", replaceable: false },
-  { key: "productNameImageSm", marker: "@product-name-image-sm", label: "产品名图片小槽位", replaceable: false }
+  { key: "productNameImageHorizontalLg", marker: "@product-name-image-horizontal-lg", label: "横版产品名图片大槽位", replaceable: false, imageAlign: "left" },
+  { key: "productNameImageHorizontalMd", marker: "@product-name-image-horizontal-md", label: "横版产品名图片中槽位", replaceable: false, imageAlign: "left" },
+  { key: "productNameImageHorizontalSm", marker: "@product-name-image-horizontal-sm", label: "横版产品名图片小槽位", replaceable: false, imageAlign: "left" },
+  { key: "productNameImageVerticalLg", marker: "@product-name-image-vertical-lg", label: "竖版产品名图片大槽位", replaceable: false, imageAlign: "center" },
+  { key: "productNameImageVerticalMd", marker: "@product-name-image-vertical-md", label: "竖版产品名图片中槽位", replaceable: false, imageAlign: "center" },
+  { key: "productNameImageVerticalSm", marker: "@product-name-image-vertical-sm", label: "竖版产品名图片小槽位", replaceable: false, imageAlign: "center" },
+  { key: "productNameImageLg", marker: "@product-name-image-lg", label: "产品名图片大槽位", replaceable: false, imageAlign: "center" },
+  { key: "productNameImageMd", marker: "@product-name-image-md", label: "产品名图片中槽位", replaceable: false, imageAlign: "center" },
+  { key: "productNameImageSm", marker: "@product-name-image-sm", label: "产品名图片小槽位", replaceable: false, imageAlign: "center" }
 ];
 const TEMPLATE_MATCH_TARGETS = [...TEMPLATE_TARGETS].sort((a, b) => b.marker.length - a.marker.length);
-const PRODUCT_NAME_IMAGE_KEYS = new Set(["productNameImageLg", "productNameImageMd", "productNameImageSm"]);
+const PRODUCT_NAME_IMAGE_KEYS = new Set(TEMPLATE_TARGETS.filter((target) => target.key.startsWith("productNameImage")).map((target) => target.key));
 
 try {
   if (!host) {
@@ -173,7 +179,7 @@ async function replaceProductNameImages(payload) {
     const target = getTargetForNode(slot);
 
     try {
-      const placedImage = createVisibleReplacementImage(slot, imageResource, payload);
+      const placedImage = createVisibleReplacementImage(slot, imageResource, payload, target);
       summary.replaced += 1;
       summary.cleaned += placedImage.cleaned;
       summary.hidden += placedImage.hidden;
@@ -184,6 +190,7 @@ async function replaceProductNameImages(payload) {
         `${target.marker}: ${getNodeName(slot)}`,
         `current-image: ${placedImage.currentImageFound ? "found" : "missing"}`,
         `target ${formatPosition(placedImage.target)} ${formatSize(placedImage.target)}`,
+        `align ${placedImage.align}`,
         `mode ${placedImage.mode}`,
         `image ${formatSize(placedImage.image)}`,
         `parent ${formatSize(placedImage.parentBefore)} -> ${formatSize(placedImage.parentAfter)}`,
@@ -451,20 +458,21 @@ function createImageFill(imageResource, mode) {
   };
 }
 
-function createVisibleReplacementImage(slot, imageResource, payload) {
+function createVisibleReplacementImage(slot, imageResource, payload, target) {
   const currentImage = findCurrentImageNode(slot);
   const targetNode = currentImage || slot;
   const slotBounds = getNodeBounds(slot);
   const targetBounds = getNodeBounds(targetNode);
   const imageSize = getUploadedImageSize(payload);
-  const fitted = containRect(targetBounds, imageSize);
+  const alignment = target && target.imageAlign === "left" ? "left" : "center";
+  const fitted = containRect(targetBounds, imageSize, alignment);
   const replacementName = `${getNodeName(slot)} / replaced-image`;
   const parentForDebug = targetNode.parent || slot.parent || slot;
   const parentBefore = getOptionalNodeBounds(parentForDebug);
   const cleaned = removeExistingReplacementImages(slot, targetNode);
   const fills = createContainImagePaints(imageResource);
 
-  if (currentImage && canSetImageFills(currentImage)) {
+  if (alignment === "center" && currentImage && canSetImageFills(currentImage)) {
     try {
       currentImage.fills = fills;
       postStatus(`已直接替换 current-image 图片填充：${getNodeName(currentImage)}`);
@@ -481,11 +489,14 @@ function createVisibleReplacementImage(slot, imageResource, payload) {
         cleaned,
         hidden: 0,
         currentImageFound: true,
+        align: alignment,
         mode: "直接替换 fills"
       };
     } catch (error) {
       postStatus(`current-image 直接替换 fills 失败，改用 replaced-image：${getErrorMessage(error)}`);
     }
+  } else if (alignment === "left") {
+    postStatus("horizontal 槽位使用 left contain，对齐需要创建 replaced-image");
   }
 
   if (typeof host.createRectangle !== "function") {
@@ -532,6 +543,7 @@ function createVisibleReplacementImage(slot, imageResource, payload) {
     cleaned,
     hidden,
     currentImageFound: Boolean(currentImage),
+    align: alignment,
     mode: "创建 replaced-image"
   };
 }
@@ -610,13 +622,14 @@ function getUploadedImageSize(payload) {
   return { width: 1, height: 1 };
 }
 
-function containRect(slotBounds, imageSize) {
+function containRect(slotBounds, imageSize, alignment = "center") {
   const scale = Math.min(slotBounds.width / imageSize.width, slotBounds.height / imageSize.height);
   const width = imageSize.width * scale;
   const height = imageSize.height * scale;
+  const x = alignment === "left" ? slotBounds.x : slotBounds.x + (slotBounds.width - width) / 2;
 
   return {
-    x: slotBounds.x + (slotBounds.width - width) / 2,
+    x,
     y: slotBounds.y + (slotBounds.height - height) / 2,
     width,
     height

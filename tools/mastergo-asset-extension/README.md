@@ -18,9 +18,13 @@
   - `@subtitle`
   - `@cta`
 - 替换产品名图片槽位：
-  - `@product-name-image-lg`
-  - `@product-name-image-md`
-  - `@product-name-image-sm`
+  - `@product-name-image-horizontal-lg`
+  - `@product-name-image-horizontal-md`
+  - `@product-name-image-horizontal-sm`
+  - `@product-name-image-vertical-lg`
+  - `@product-name-image-vertical-md`
+  - `@product-name-image-vertical-sm`
+  - `@product-name-image-lg` / `md` / `sm`，兼容旧模板
 - 其他图片占位图层第一版只扫描统计，不做图片替换
 
 ## 模板命名规则
@@ -36,6 +40,12 @@
 @kv-horizontal
 @kv-vertical
 @product-image
+@product-name-image-horizontal-lg
+@product-name-image-horizontal-md
+@product-name-image-horizontal-sm
+@product-name-image-vertical-lg
+@product-name-image-vertical-md
+@product-name-image-vertical-sm
 @product-name-image-lg
 @product-name-image-md
 @product-name-image-sm
@@ -54,9 +64,13 @@
 
 推荐使用场景：
 
-- `@product-name-image-lg`：主 KV / 大图 / 重点资源位
-- `@product-name-image-md`：中等 Banner / 方图 / 常规资源位
-- `@product-name-image-sm`：Push / 小卡片 / 小资源位
+- `@product-name-image-horizontal-lg`：横版主 KV / 大图 / 重点资源位，替换后左对齐
+- `@product-name-image-horizontal-md`：横版中等 Banner / 常规资源位，替换后左对齐
+- `@product-name-image-horizontal-sm`：横版小卡片 / 小资源位，替换后左对齐
+- `@product-name-image-vertical-lg`：竖版主 KV / 大图 / 重点资源位，替换后居中对齐
+- `@product-name-image-vertical-md`：竖版中等 Banner / 方图 / 常规资源位，替换后居中对齐
+- `@product-name-image-vertical-sm`：竖版 Push / 小卡片 / 小资源位，替换后居中对齐
+- `@product-name-image-lg` / `md` / `sm`：旧命名兼容，默认按居中对齐处理
 
 建议安全框：
 
@@ -65,6 +79,12 @@
 @product-name-image-md：最大 260 × 46
 @product-name-image-sm：最大 180 × 32
 ```
+
+对齐规则：
+
+- horizontal 槽位：contain 缩放，左对齐，垂直居中。
+- vertical 槽位：contain 缩放，水平居中，垂直居中。
+- 旧命名槽位：contain 缩放，默认居中对齐。
 
 后续图片替换原则：
 
@@ -77,19 +97,19 @@
 - 如果图片较长，则受最大宽度限制
 - 等价于 max-width + max-height 的安全框适配
 
-当前实现会优先递归查找槽位内部的 `current-image`，并直接替换 `current-image` 本身的图片填充。这样会保留它的位置、尺寸、名称和父级关系，不使用外层 `@product-name-image-*` 容器尺寸作为最终图片尺寸。
+当前实现会优先递归查找槽位内部的 `current-image`，并以 `current-image` 作为唯一替换基准。竖版槽位和旧命名槽位会优先直接替换 `current-image` 本身的图片填充；横版槽位为了保证左对齐，会基于 `current-image` 创建等比适配的 `replaced-image`。
 
-只有当 `current-image` 无法直接设置图片填充时，插件才会在 `current-image` 的同一父级创建新的可见图片矩形，名称为原槽位名称 + ` / replaced-image`。备用图层会基于 `current-image` 的 x、y、width、height 做 contain 适配，不使用页面绝对坐标撑大父级组。
+只有当居中槽位的 `current-image` 无法直接设置图片填充时，插件才会在 `current-image` 的同一父级创建新的可见图片矩形，名称为原槽位名称 + ` / replaced-image`。备用图层会基于 `current-image` 的 x、y、width、height 做 contain 适配，不使用页面绝对坐标撑大父级组。
 
 当前图片填充依据 `@mastergo/plugin-typings`：`mg.createImage(Uint8Array)` 返回 `Image`，图片引用使用 `image.href`，`ImagePaint` 使用 `imageRef` 字段并设置 `scaleMode: "FIT"`。
 
 推荐槽位结构：
 
 ```text
-@product-name-image-lg
+@product-name-image-horizontal-lg
   └── current-image
 
-@product-name-image-md
+@product-name-image-vertical-md
   └── current-image
 
 @product-name-image-sm
@@ -111,6 +131,12 @@
 @kv-horizontal：cover，可裁切
 @kv-vertical：cover，可裁切
 @product-image：contain，完整展示
+@product-name-image-horizontal-lg：contain，完整展示，左对齐
+@product-name-image-horizontal-md：contain，完整展示，左对齐
+@product-name-image-horizontal-sm：contain，完整展示，左对齐
+@product-name-image-vertical-lg：contain，完整展示，居中对齐
+@product-name-image-vertical-md：contain，完整展示，居中对齐
+@product-name-image-vertical-sm：contain，完整展示，居中对齐
 @product-name-image-lg：contain，完整展示
 @product-name-image-md：contain，完整展示
 @product-name-image-sm：contain，完整展示
@@ -127,6 +153,12 @@
 @kv-horizontal: 2
 @kv-vertical: 1
 @product-image: 3
+@product-name-image-horizontal-lg: 1
+@product-name-image-horizontal-md: 2
+@product-name-image-horizontal-sm: 1
+@product-name-image-vertical-lg: 1
+@product-name-image-vertical-md: 2
+@product-name-image-vertical-sm: 1
 @product-name-image-lg: 1
 @product-name-image-md: 2
 @product-name-image-sm: 4

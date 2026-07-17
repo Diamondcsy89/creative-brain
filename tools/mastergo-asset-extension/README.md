@@ -13,18 +13,14 @@
 - 扫描当前页面中的模板命名图层
 - 统计各类可替换图层数量
 - 批量替换文本图层：
-  - `@product-name`
+  - `@name`
   - `@title`
-  - `@subtitle`
+  - `@sub`
   - `@cta`
 - 替换产品名图片槽位：
-  - `@product-name-image-horizontal-lg`
-  - `@product-name-image-horizontal-md`
-  - `@product-name-image-horizontal-sm`
-  - `@product-name-image-vertical-lg`
-  - `@product-name-image-vertical-md`
-  - `@product-name-image-vertical-sm`
-  - `@product-name-image-lg` / `md` / `sm`，兼容旧模板
+  - `@pnh-lg` / `@pnh-md` / `@pnh-sm`
+  - `@pnv-lg` / `@pnv-md` / `@pnv-sm`
+  - 旧命名继续兼容
 - 其他图片占位图层第一版只扫描统计，不做图片替换
 
 ## 模板命名规则
@@ -32,31 +28,49 @@
 请在 MasterGo 模板中提前给可替换图层命名：
 
 ```text
-@product-name
+@name
 @title
-@subtitle
+@sub
 @cta
 @price
-@kv-horizontal
-@kv-vertical
-@product-image
-@product-name-image-horizontal-lg
-@product-name-image-horizontal-md
-@product-name-image-horizontal-sm
-@product-name-image-vertical-lg
-@product-name-image-vertical-md
-@product-name-image-vertical-sm
-@product-name-image-lg
-@product-name-image-md
-@product-name-image-sm
+@kvh
+@kvv
+@prod
+@pnh-lg
+@pnh-md
+@pnh-sm
+@pnv-lg
+@pnv-md
+@pnv-sm
+@target
 ```
 
 命名可以作为图层名的一部分，例如：
 
 ```text
 @title / PC Hero
-@product-image / Mobile Banner
+@prod / Mobile Banner
 ```
+
+命名对照表：
+
+| 旧命名 | 新命名 |
+| --- | --- |
+| `@product-name` | `@name` |
+| `@subtitle` | `@sub` |
+| `@kv-horizontal` | `@kvh` |
+| `@kv-vertical` | `@kvv` |
+| `@product-image` | `@prod` |
+| `@product-name-image-horizontal-lg` | `@pnh-lg` |
+| `@product-name-image-horizontal-md` | `@pnh-md` |
+| `@product-name-image-horizontal-sm` | `@pnh-sm` |
+| `@product-name-image-vertical-lg` | `@pnv-lg` |
+| `@product-name-image-vertical-md` | `@pnv-md` |
+| `@product-name-image-vertical-sm` | `@pnv-sm` |
+| `@product-name-image-lg` | 继续兼容 |
+| `@product-name-image-md` | 继续兼容 |
+| `@product-name-image-sm` | 继续兼容 |
+| `current-image` | `@target` |
 
 ## 产品名图片槽位
 
@@ -64,12 +78,12 @@
 
 推荐使用场景：
 
-- `@product-name-image-horizontal-lg`：横版主 KV / 大图 / 重点资源位，替换后左对齐
-- `@product-name-image-horizontal-md`：横版中等 Banner / 常规资源位，替换后左对齐
-- `@product-name-image-horizontal-sm`：横版小卡片 / 小资源位，替换后左对齐
-- `@product-name-image-vertical-lg`：竖版主 KV / 大图 / 重点资源位，替换后居中对齐
-- `@product-name-image-vertical-md`：竖版中等 Banner / 方图 / 常规资源位，替换后居中对齐
-- `@product-name-image-vertical-sm`：竖版 Push / 小卡片 / 小资源位，替换后居中对齐
+- `@pnh-lg`：横版主 KV / 大图 / 重点资源位，替换后左对齐
+- `@pnh-md`：横版中等 Banner / 常规资源位，替换后左对齐
+- `@pnh-sm`：横版小卡片 / 小资源位，替换后左对齐
+- `@pnv-lg`：竖版主 KV / 大图 / 重点资源位，替换后居中对齐
+- `@pnv-md`：竖版中等 Banner / 方图 / 常规资源位，替换后居中对齐
+- `@pnv-sm`：竖版 Push / 小卡片 / 小资源位，替换后居中对齐
 - `@product-name-image-lg` / `md` / `sm`：旧命名兼容，默认按居中对齐处理
 
 建议安全框：
@@ -97,26 +111,32 @@
 - 如果图片较长，则受最大宽度限制
 - 等价于 max-width + max-height 的安全框适配
 
-当前实现会优先递归查找槽位内部的 `current-image`，并以 `current-image` 作为唯一替换基准。竖版槽位和旧命名槽位会优先直接替换 `current-image` 本身的图片填充；横版槽位为了保证左对齐，会基于 `current-image` 创建等比适配的 `replaced-image`。
+当前实现会优先递归查找槽位内部的 `@target`，如果没有 `@target`，再兼容寻找旧的 `current-image`。这个基准图层是唯一替换基准。竖版槽位和旧命名槽位会优先直接替换基准图层本身的图片填充；横版槽位为了保证左对齐，会基于基准图层创建等比适配的 `replaced-image`。
 
-只有当居中槽位的 `current-image` 无法直接设置图片填充时，插件才会在 `current-image` 的同一父级创建新的可见图片矩形，名称为原槽位名称 + ` / replaced-image`。备用图层会基于 `current-image` 的 x、y、width、height 做 contain 适配，不使用页面绝对坐标撑大父级组。
+只有当居中槽位的基准图层无法直接设置图片填充时，插件才会在基准图层的同一父级创建新的可见图片矩形，名称为原槽位名称 + ` / replaced-image`。备用图层会基于 `@target` / `current-image` 的 x、y、width、height 做 contain 适配，不使用页面绝对坐标撑大父级组。
 
 当前图片填充依据 `@mastergo/plugin-typings`：`mg.createImage(Uint8Array)` 返回 `Image`，图片引用使用 `image.href`，`ImagePaint` 使用 `imageRef` 字段并设置 `scaleMode: "FIT"`。
 
 推荐槽位结构：
 
 ```text
-@product-name-image-horizontal-lg
-  └── current-image
+@kvh
+  └── @target
 
-@product-name-image-vertical-md
-  └── current-image
+@kvv
+  └── @target
 
-@product-name-image-sm
-  └── current-image
+@pnh-lg
+  └── @target
+
+@pnv-md
+  └── @target
+
+@prod
+  └── @target
 ```
 
-替换时插件会保留 `@product-name-image-*` 槽位容器，先清理旧的自动生成 `replaced-image`，再优先替换 `current-image`。如果只能使用备用图层，则隐藏旧的 `current-image` 并插入新的 `replaced-image`。
+替换时插件会保留槽位容器，先清理旧的自动生成 `replaced-image`，再优先替换 `@target`。如果只能使用备用图层，则隐藏旧的 `@target` / `current-image` 并插入新的 `replaced-image`。
 
 产品名图片建议提前裁掉多余透明边距，这样 contain 适配后视觉大小更稳定。替换后仍可在 MasterGo 中手动调整图片大小和位置。
 
@@ -128,37 +148,37 @@
 图片适配规则：
 
 ```text
-@kv-horizontal：cover，可裁切
-@kv-vertical：cover，可裁切
-@product-image：contain，完整展示
-@product-name-image-horizontal-lg：contain，完整展示，左对齐
-@product-name-image-horizontal-md：contain，完整展示，左对齐
-@product-name-image-horizontal-sm：contain，完整展示，左对齐
-@product-name-image-vertical-lg：contain，完整展示，居中对齐
-@product-name-image-vertical-md：contain，完整展示，居中对齐
-@product-name-image-vertical-sm：contain，完整展示，居中对齐
-@product-name-image-lg：contain，完整展示
-@product-name-image-md：contain，完整展示
-@product-name-image-sm：contain，完整展示
+@kvh：cover，可裁切
+@kvv：cover，可裁切
+@prod：contain，完整展示
+@pnh-lg：contain，完整展示，左对齐
+@pnh-md：contain，完整展示，左对齐
+@pnh-sm：contain，完整展示，左对齐
+@pnv-lg：contain，完整展示，居中对齐
+@pnv-md：contain，完整展示，居中对齐
+@pnv-sm：contain，完整展示，居中对齐
+@product-name-image-lg：contain，完整展示，居中对齐
+@product-name-image-md：contain，完整展示，居中对齐
+@product-name-image-sm：contain，完整展示，居中对齐
 ```
 
 扫描结果示例：
 
 ```text
-@product-name: 1
+@name: 1
 @title: 1
-@subtitle: 1
+@sub: 1
 @cta: 1
 @price: 1
-@kv-horizontal: 2
-@kv-vertical: 1
-@product-image: 3
-@product-name-image-horizontal-lg: 1
-@product-name-image-horizontal-md: 2
-@product-name-image-horizontal-sm: 1
-@product-name-image-vertical-lg: 1
-@product-name-image-vertical-md: 2
-@product-name-image-vertical-sm: 1
+@kvh: 2
+@kvv: 1
+@prod: 3
+@pnh-lg: 1
+@pnh-md: 2
+@pnh-sm: 1
+@pnv-lg: 1
+@pnv-md: 2
+@pnv-sm: 1
 @product-name-image-lg: 1
 @product-name-image-md: 2
 @product-name-image-sm: 4
@@ -213,7 +233,7 @@ dist/ui.html
 
 - 先支持文字替换。
 - 图片替换第一版优先支持产品名图片槽位。
-- `@kv-horizontal`、`@kv-vertical`、`@product-image` 第一版仍只扫描统计，后续实现。
+- `@kvh`、`@kvv`、`@prod` 第一版仍只扫描统计，旧命名继续兼容。
 - `@price` 第一版只扫描统计，暂不替换。
 - 需要设计师提前在 MasterGo 模板中给可替换图层命名。
 - 暂不发布到插件市场。

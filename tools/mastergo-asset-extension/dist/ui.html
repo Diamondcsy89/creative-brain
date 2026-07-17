@@ -158,14 +158,12 @@
         <input id="cta" value="立即查看" />
 
         <div class="hint">
-          <strong>文本产品名：</strong>@product-name<br />
-          <strong>横版产品名图片：</strong>@product-name-image-horizontal-lg / md / sm<br />
-          <strong>竖版产品名图片：</strong>@product-name-image-vertical-lg / md / sm<br />
-          <strong>旧版产品名图片：</strong>@product-name-image-lg / md / sm<br />
-          <strong>横版 KV：</strong>@kv-horizontal<br />
-          <strong>竖版 KV：</strong>@kv-vertical<br />
-          <strong>商品图：</strong>@product-image<br />
-          横版产品名图片左对齐，竖版和旧版产品名图片居中对齐。
+          <strong>文本：</strong>@name / @title / @sub / @cta / @price<br />
+          <strong>KV：</strong>@kvh / @kvv<br />
+          <strong>商品图：</strong>@prod<br />
+          <strong>产品名图：</strong>@pnh-lg / md / sm，@pnv-lg / md / sm<br />
+          <strong>替换基准：</strong>@target<br />
+          横版 @pnh-* 左对齐，竖版 @pnv-* 和旧版命名居中对齐。
         </div>
 
         <label for="productNameImage">产品名图片上传 / 选择</label>

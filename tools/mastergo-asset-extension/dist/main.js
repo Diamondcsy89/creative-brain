@@ -4,25 +4,25 @@ const host = globalThis.mg || globalThis.mastergo || globalThis.figma;
 const handledRequestIds = new Set();
 
 const TEMPLATE_TARGETS = [
-  { key: "productName", marker: "@product-name", label: "产品名称", replaceable: true },
+  { key: "productName", marker: "@name", aliases: ["@product-name"], label: "产品名称", replaceable: true },
   { key: "title", marker: "@title", label: "主标题", replaceable: true },
-  { key: "subtitle", marker: "@subtitle", label: "副标题", replaceable: true },
+  { key: "subtitle", marker: "@sub", aliases: ["@subtitle"], label: "副标题", replaceable: true },
   { key: "cta", marker: "@cta", label: "CTA 文案", replaceable: true },
   { key: "price", marker: "@price", label: "价格", replaceable: false },
-  { key: "kvHorizontal", marker: "@kv-horizontal", label: "横版 KV", replaceable: false },
-  { key: "kvVertical", marker: "@kv-vertical", label: "竖版 KV", replaceable: false },
-  { key: "productImage", marker: "@product-image", label: "商品图", replaceable: false },
-  { key: "productNameImageHorizontalLg", marker: "@product-name-image-horizontal-lg", label: "横版产品名图片大槽位", replaceable: false, imageAlign: "left" },
-  { key: "productNameImageHorizontalMd", marker: "@product-name-image-horizontal-md", label: "横版产品名图片中槽位", replaceable: false, imageAlign: "left" },
-  { key: "productNameImageHorizontalSm", marker: "@product-name-image-horizontal-sm", label: "横版产品名图片小槽位", replaceable: false, imageAlign: "left" },
-  { key: "productNameImageVerticalLg", marker: "@product-name-image-vertical-lg", label: "竖版产品名图片大槽位", replaceable: false, imageAlign: "center" },
-  { key: "productNameImageVerticalMd", marker: "@product-name-image-vertical-md", label: "竖版产品名图片中槽位", replaceable: false, imageAlign: "center" },
-  { key: "productNameImageVerticalSm", marker: "@product-name-image-vertical-sm", label: "竖版产品名图片小槽位", replaceable: false, imageAlign: "center" },
+  { key: "kvHorizontal", marker: "@kvh", aliases: ["@kv-horizontal"], label: "横版 KV", replaceable: false },
+  { key: "kvVertical", marker: "@kvv", aliases: ["@kv-vertical"], label: "竖版 KV", replaceable: false },
+  { key: "productImage", marker: "@prod", aliases: ["@product-image"], label: "商品图", replaceable: false },
+  { key: "productNameImageHorizontalLg", marker: "@pnh-lg", aliases: ["@product-name-image-horizontal-lg"], label: "横版产品名图片大槽位", replaceable: false, imageAlign: "left" },
+  { key: "productNameImageHorizontalMd", marker: "@pnh-md", aliases: ["@product-name-image-horizontal-md"], label: "横版产品名图片中槽位", replaceable: false, imageAlign: "left" },
+  { key: "productNameImageHorizontalSm", marker: "@pnh-sm", aliases: ["@product-name-image-horizontal-sm"], label: "横版产品名图片小槽位", replaceable: false, imageAlign: "left" },
+  { key: "productNameImageVerticalLg", marker: "@pnv-lg", aliases: ["@product-name-image-vertical-lg"], label: "竖版产品名图片大槽位", replaceable: false, imageAlign: "center" },
+  { key: "productNameImageVerticalMd", marker: "@pnv-md", aliases: ["@product-name-image-vertical-md"], label: "竖版产品名图片中槽位", replaceable: false, imageAlign: "center" },
+  { key: "productNameImageVerticalSm", marker: "@pnv-sm", aliases: ["@product-name-image-vertical-sm"], label: "竖版产品名图片小槽位", replaceable: false, imageAlign: "center" },
   { key: "productNameImageLg", marker: "@product-name-image-lg", label: "产品名图片大槽位", replaceable: false, imageAlign: "center" },
   { key: "productNameImageMd", marker: "@product-name-image-md", label: "产品名图片中槽位", replaceable: false, imageAlign: "center" },
   { key: "productNameImageSm", marker: "@product-name-image-sm", label: "产品名图片小槽位", replaceable: false, imageAlign: "center" }
 ];
-const TEMPLATE_MATCH_TARGETS = [...TEMPLATE_TARGETS].sort((a, b) => b.marker.length - a.marker.length);
+const TEMPLATE_MATCH_TARGETS = TEMPLATE_TARGETS.flatMap((target) => [target.marker, ...(target.aliases || [])].map((marker) => ({ marker, target }))).sort((a, b) => b.marker.length - a.marker.length);
 const PRODUCT_NAME_IMAGE_KEYS = new Set(TEMPLATE_TARGETS.filter((target) => target.key.startsWith("productNameImage")).map((target) => target.key));
 
 try {
@@ -100,10 +100,10 @@ function scanTemplateLayers() {
 async function replaceTemplateText(payload) {
   const nodes = getTemplateNodes();
   const values = {
-    "@product-name": normalizeText(payload.productName),
-    "@title": normalizeText(payload.title),
-    "@subtitle": normalizeText(payload.subtitle),
-    "@cta": normalizeText(payload.cta)
+    productName: normalizeText(payload.productName),
+    title: normalizeText(payload.title),
+    subtitle: normalizeText(payload.subtitle),
+    cta: normalizeText(payload.cta)
   };
 
   const summary = {
@@ -125,7 +125,7 @@ async function replaceTemplateText(payload) {
       continue;
     }
 
-    const value = values[target.marker];
+    const value = values[target.key];
     if (!value) {
       summary.skipped += 1;
       summary.skippedByMarker[target.marker] += 1;
@@ -188,7 +188,7 @@ async function replaceProductNameImages(payload) {
       summary.replacedByMarker[target.marker] += 1;
       summary.notes.push([
         `${target.marker}: ${getNodeName(slot)}`,
-        `current-image: ${placedImage.currentImageFound ? "found" : "missing"}`,
+        `target-layer: ${placedImage.currentImageFound ? "found" : "missing"}`,
         `target ${formatPosition(placedImage.target)} ${formatSize(placedImage.target)}`,
         `align ${placedImage.align}`,
         `mode ${placedImage.mode}`,
@@ -475,7 +475,7 @@ function createVisibleReplacementImage(slot, imageResource, payload, target) {
   if (alignment === "center" && currentImage && canSetImageFills(currentImage)) {
     try {
       currentImage.fills = fills;
-      postStatus(`已直接替换 current-image 图片填充：${getNodeName(currentImage)}`);
+      postStatus(`已直接替换 @target 图片填充：${getNodeName(currentImage)}`);
       const parentAfter = getOptionalNodeBounds(parentForDebug);
 
       return {
@@ -493,7 +493,7 @@ function createVisibleReplacementImage(slot, imageResource, payload, target) {
         mode: "直接替换 fills"
       };
     } catch (error) {
-      postStatus(`current-image 直接替换 fills 失败，改用 replaced-image：${getErrorMessage(error)}`);
+      postStatus(`@target 直接替换 fills 失败，改用 replaced-image：${getErrorMessage(error)}`);
     }
   } else if (alignment === "left") {
     postStatus("horizontal 槽位使用 left contain，对齐需要创建 replaced-image");
@@ -551,7 +551,7 @@ function createVisibleReplacementImage(slot, imageResource, payload, target) {
 function insertReplacementImage(targetNode, imageNode, fitted) {
   const parent = targetNode.parent;
   if (!parent || typeof parent.appendChild !== "function") {
-    throw new Error("无法在 current-image 父级创建图片节点");
+    throw new Error("无法在 @target 父级创建图片节点");
   }
 
   imageNode.x = fitted.x;
@@ -562,7 +562,7 @@ function insertReplacementImage(targetNode, imageNode, fitted) {
       parent.appendChild(imageNode);
       return;
     } catch (error) {
-      throw new Error(`无法插入 current-image 同父级：${getErrorMessage(error)}`);
+      throw new Error(`无法插入 @target 同父级：${getErrorMessage(error)}`);
     }
   }
 }
@@ -681,6 +681,15 @@ function findCurrentImageNode(slot) {
 
   collectNodes(slot, (node) => {
     if (result || node === slot) return;
+    if (getNodeName(node).trim().toLowerCase().includes("@target")) {
+      result = node;
+    }
+  });
+
+  if (result) return result;
+
+  collectNodes(slot, (node) => {
+    if (result || node === slot) return;
     if (getNodeName(node).trim().toLowerCase() === "current-image") {
       result = node;
     }
@@ -725,7 +734,7 @@ function hideNode(node) {
       node.isVisible = false;
       return 1;
     } catch (innerError) {
-      console.log(`隐藏 current-image 跳过：${getErrorMessage(innerError)}`);
+      console.log(`隐藏 @target 跳过：${getErrorMessage(innerError)}`);
       return 0;
     }
   }
@@ -746,7 +755,7 @@ function isReplacementImageNode(node) {
 
 function isImageLikeNode(node) {
   const name = getNodeName(node).toLowerCase();
-  if (name.includes("current-image") || name.includes("old-image")) return true;
+  if (name.includes("@target") || name.includes("current-image") || name.includes("old-image")) return true;
   if (typeof node.type === "string" && node.type.toLowerCase().includes("image")) return true;
   if (!node.fills) return false;
 
@@ -911,7 +920,8 @@ function walkNode(node, visit) {
 
 function getTargetForNode(node) {
   const name = getNodeName(node);
-  return TEMPLATE_MATCH_TARGETS.find((target) => name.includes(target.marker));
+  const match = TEMPLATE_MATCH_TARGETS.find((entry) => name.includes(entry.marker));
+  return match ? match.target : null;
 }
 
 function getNodeName(node) {

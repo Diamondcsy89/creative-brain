@@ -22,6 +22,7 @@ const TEMPLATE_TARGETS = [
 ];
 const TEMPLATE_MATCH_TARGETS = TEMPLATE_TARGETS.flatMap((target) => [target.marker, ...(target.aliases || [])].map((marker) => ({ marker, target }))).sort((a, b) => b.marker.length - a.marker.length);
 const PRODUCT_NAME_IMAGE_KEYS = new Set(TEMPLATE_TARGETS.filter((target) => target.key.startsWith("productNameImage")).map((target) => target.key));
+const KV_IMAGE_KEYS = new Set(["kvHorizontal", "kvVertical"]);
 
 try {
   if (!host) {
@@ -40,7 +41,7 @@ try {
 async function handlePluginMessage(rawMessage) {
   try {
     const message = normalizeMessage(rawMessage);
-    if (!message || !["scan-template-layers", "replace-template-text", "replace-product-name-image"].includes(message.type)) return;
+    if (!message || !["scan-template-layers", "replace-template-text", "replace-product-name-image", "replace-kv-images"].includes(message.type)) return;
 
     if (message.requestId && handledRequestIds.has(message.requestId)) {
       return;
@@ -68,6 +69,13 @@ async function handlePluginMessage(rawMessage) {
       const imageResult = await replaceProductNameImages(message.payload);
       postImageReplaceResult(imageResult);
       notify("产品名图片已替换");
+      return;
+    }
+
+    if (message.type === "replace-kv-images") {
+      const kvResult = await replaceKvImages(message.payload);
+      postKvReplaceResult(kvResult);
+      notify("KV 图片已替换");
     }
   } catch (error) {
     const messageText = `操作失败：${getErrorMessage(error)}`;
@@ -140,6 +148,95 @@ async function replaceTemplateText(payload) {
       summary.skipped += 1;
       summary.skippedByMarker[target.marker] += 1;
       summary.notes.push(`${target.marker}: 替换失败 "${getNodeName(node)}" / ${getErrorMessage(error)}`);
+    }
+  }
+
+  return summary;
+}
+
+async function replaceKvImages(payload) {
+  const images = {
+    horizontal: payload && payload.horizontal ? payload.horizontal : null,
+    vertical: payload && payload.vertical ? payload.vertical : null
+  };
+
+  if (!images.horizontal && !images.vertical) {
+    throw new Error("请至少选择一张横版或竖版 KV 图片");
+  }
+
+  const resources = {};
+  for (const direction of ["horizontal", "vertical"]) {
+    const imagePayload = images[direction];
+    if (!imagePayload) continue;
+
+    const bytes = getImageBytes(imagePayload);
+    const imageType = normalizeImageType(imagePayload.imageType || imagePayload.mimeType, imagePayload.fileName);
+    postStatus(`main 已收到${direction === "horizontal" ? "横版" : "竖版"} KV：${imagePayload.fileName || "未命名文件"} / ${bytes.length} bytes`);
+    postStatus(`main 规范化 KV imageType：${imageType}`);
+    resources[direction] = {
+      payload: imagePayload,
+      imageResource: await createImageResource(bytes, imagePayload, imageType)
+    };
+    postStatus(`${direction === "horizontal" ? "横版" : "竖版"} KV 图片资源创建成功`);
+  }
+
+  const slots = getTemplateNodes().filter((node) => {
+    const target = getTargetForNode(node);
+    return target && KV_IMAGE_KEYS.has(target.key);
+  });
+
+  const summary = {
+    foundHorizontal: 0,
+    foundVertical: 0,
+    replacedHorizontal: 0,
+    replacedVertical: 0,
+    cleaned: 0,
+    hidden: 0,
+    skipped: 0,
+    skippedByMarker: createEmptyCounts(),
+    replacedByMarker: createEmptyCounts(),
+    notes: []
+  };
+
+  for (const slot of slots) {
+    const target = getTargetForNode(slot);
+    const direction = target.key === "kvHorizontal" ? "horizontal" : "vertical";
+    const matchedMarker = getMatchedMarkerForNode(slot) || target.marker;
+
+    if (direction === "horizontal") summary.foundHorizontal += 1;
+    if (direction === "vertical") summary.foundVertical += 1;
+
+    if (!resources[direction]) {
+      summary.skipped += 1;
+      summary.skippedByMarker[target.marker] += 1;
+      summary.notes.push(`${target.marker}: 未选择${direction === "horizontal" ? "横版" : "竖版"} KV 图片，已跳过 "${getNodeName(slot)}"`);
+      continue;
+    }
+
+    try {
+      const placedImage = createKvReplacementImage(slot, resources[direction].imageResource, resources[direction].payload, matchedMarker);
+      summary.cleaned += placedImage.cleaned;
+      summary.hidden += placedImage.hidden;
+      summary.replacedByMarker[target.marker] += 1;
+      if (direction === "horizontal") summary.replacedHorizontal += 1;
+      if (direction === "vertical") summary.replacedVertical += 1;
+      summary.notes.push([
+        `${target.marker}: ${getNodeName(slot)}`,
+        `matched ${matchedMarker}`,
+        `target-layer: ${placedImage.currentImageFound ? "found" : "missing"}`,
+        placedImage.currentImageFound ? "" : "建议在槽位内放置 @target",
+        `target ${formatPosition(placedImage.target)} ${formatSize(placedImage.target)}`,
+        `fit cover`,
+        `image ${formatSize(placedImage.image)}`,
+        `parent ${formatSize(placedImage.parentBefore)} -> ${formatSize(placedImage.parentAfter)}`,
+        `清理 ${placedImage.cleaned}`,
+        `隐藏 ${placedImage.hidden}`,
+        placedImage.parentWarning ? "警告：父级组尺寸发生变化，可能存在坐标系错误" : ""
+      ].filter(Boolean).join(" / "));
+    } catch (error) {
+      summary.skipped += 1;
+      summary.skippedByMarker[target.marker] += 1;
+      summary.notes.push(`${target.marker}: KV 替换失败 "${getNodeName(slot)}" / ${getErrorMessage(error)}`);
     }
   }
 
@@ -467,7 +564,7 @@ function createVisibleReplacementImage(slot, imageResource, payload, target) {
   const replacementName = `${getNodeName(slot)} / replaced-image`;
   const parentForDebug = targetNode.parent || slot.parent || slot;
   const parentBefore = getOptionalNodeBounds(parentForDebug);
-  const cleaned = removeExistingReplacementImages(slot, targetNode);
+  const cleaned = removeExistingReplacementImages(slot, targetNode, replacementName);
   const fills = createContainImagePaints(imageResource);
 
   if (alignment === "center" && currentImage && canSetImageFills(currentImage)) {
@@ -543,6 +640,54 @@ function createVisibleReplacementImage(slot, imageResource, payload, target) {
     currentImageFound: Boolean(currentImage),
     align: alignment,
     mode: "创建 replaced-image"
+  };
+}
+
+function createKvReplacementImage(slot, imageResource, payload, matchedMarker) {
+  const currentImage = findCurrentImageNode(slot);
+  const targetNode = currentImage || slot;
+  const slotBounds = getNodeBounds(slot);
+  const targetBounds = getNodeBounds(targetNode);
+  const imageSize = getUploadedImageSize(payload);
+  const coverImageBounds = coverRect(targetBounds, imageSize);
+  const replacementName = `${matchedMarker || getNodeName(slot)} / replaced-image`;
+  const parentForDebug = targetNode.parent || slot.parent || slot;
+  const parentBefore = getOptionalNodeBounds(parentForDebug);
+  const cleaned = removeExistingReplacementImages(slot, targetNode, replacementName);
+
+  if (typeof host.createRectangle !== "function") {
+    throw new Error("当前 API 不支持创建 KV 图片矩形");
+  }
+
+  const imageNode = host.createRectangle();
+  imageNode.name = replacementName;
+  imageNode.x = targetBounds.x;
+  imageNode.y = targetBounds.y;
+  resizeNode(imageNode, targetBounds.width, targetBounds.height);
+
+  try {
+    imageNode.fills = [createImageFill(imageResource, "FILL")];
+  } catch (error) {
+    throw new Error(`无法创建 KV cover 图片填充：${getErrorMessage(error)}`);
+  }
+
+  insertReplacementImage(targetNode, imageNode, targetBounds);
+  const hidden = currentImage ? hideNode(currentImage) : 0;
+  bringNodeToFront(imageNode);
+  postStatus(`已创建 KV replaced-image 图层：${imageNode.name}`);
+  const parentAfter = getOptionalNodeBounds(parentForDebug);
+
+  return {
+    node: imageNode,
+    slot: slotBounds,
+    target: targetBounds,
+    image: coverImageBounds,
+    parentBefore,
+    parentAfter,
+    parentWarning: hasUnexpectedParentResize(parentBefore, parentAfter),
+    cleaned,
+    hidden,
+    currentImageFound: Boolean(currentImage)
   };
 }
 
@@ -634,7 +779,20 @@ function containRect(slotBounds, imageSize, alignment = "center") {
   };
 }
 
-function removeExistingReplacementImages(slot, targetNode) {
+function coverRect(slotBounds, imageSize) {
+  const scale = Math.max(slotBounds.width / imageSize.width, slotBounds.height / imageSize.height);
+  const width = imageSize.width * scale;
+  const height = imageSize.height * scale;
+
+  return {
+    x: slotBounds.x + (slotBounds.width - width) / 2,
+    y: slotBounds.y + (slotBounds.height - height) / 2,
+    width,
+    height
+  };
+}
+
+function removeExistingReplacementImages(slot, targetNode, replacementName) {
   let count = 0;
   const candidates = [];
 
@@ -646,7 +804,7 @@ function removeExistingReplacementImages(slot, targetNode) {
 
   if (slot.parent && slot.parent.children) {
     for (const node of Array.from(slot.parent.children)) {
-      if (node !== slot && isReplacementImageNode(node)) {
+      if (node !== slot && isReplacementImageNode(node) && isSameReplacementName(node, replacementName)) {
         candidates.push(node);
       }
     }
@@ -654,7 +812,7 @@ function removeExistingReplacementImages(slot, targetNode) {
 
   if (targetNode && targetNode.parent && targetNode.parent.children) {
     for (const node of Array.from(targetNode.parent.children)) {
-      if (node !== targetNode && isReplacementImageNode(node)) {
+      if (node !== targetNode && isReplacementImageNode(node) && isSameReplacementName(node, replacementName)) {
         candidates.push(node);
       }
     }
@@ -749,6 +907,10 @@ function collectNodes(root, visit) {
 
 function isReplacementImageNode(node) {
   return getNodeName(node).includes("replaced-image");
+}
+
+function isSameReplacementName(node, replacementName) {
+  return !replacementName || getNodeName(node) === replacementName;
 }
 
 function isImageLikeNode(node) {
@@ -922,6 +1084,12 @@ function getTargetForNode(node) {
   return match ? match.target : null;
 }
 
+function getMatchedMarkerForNode(node) {
+  const name = getNodeName(node);
+  const match = TEMPLATE_MATCH_TARGETS.find((entry) => name.includes(entry.marker));
+  return match ? match.marker : "";
+}
+
 function getNodeName(node) {
   return typeof node.name === "string" ? node.name : "";
 }
@@ -1072,6 +1240,14 @@ function postImageReplaceResult(result) {
   postMessage({
     type: "image-replace-result",
     message: `找到 ${result.found} 个产品名图片槽位，直接替换 fills ${result.filled} 个，创建 replaced-image ${result.inserted} 个，已跳过 ${result.skipped} 个`,
+    result
+  });
+}
+
+function postKvReplaceResult(result) {
+  postMessage({
+    type: "kv-replace-result",
+    message: `找到横版 KV ${result.foundHorizontal} 个，竖版 KV ${result.foundVertical} 个；已替换横版 ${result.replacedHorizontal} 个，竖版 ${result.replacedVertical} 个`,
     result
   });
 }

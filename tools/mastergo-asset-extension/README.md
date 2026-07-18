@@ -12,6 +12,9 @@
 - 输入活动名称、产品名称、主标题、副标题、CTA 文案
 - 扫描当前页面中的模板命名图层
 - 统计各类可替换图层数量
+- 替换 KV 图片：
+  - `@kvh`：横版 KV，cover 适配
+  - `@kvv`：竖版 KV，cover 适配
 - 批量替换文本图层：
   - `@name`
   - `@title`
@@ -21,7 +24,7 @@
   - `@pnh-lg` / `@pnh-md` / `@pnh-sm`
   - `@pnv-lg` / `@pnv-md` / `@pnv-sm`
   - 旧命名继续兼容
-- 其他图片占位图层第一版只扫描统计，不做图片替换
+- 商品图 `@prod` 第一版只扫描统计，后续实现
 
 ## 模板命名规则
 
@@ -72,6 +75,27 @@
 | `@product-name-image-sm` | 继续兼容 |
 | `current-image` | `@target` |
 
+## 图片槽位
+
+KV：
+
+- `@kvh` = 横版 KV，cover 适配，铺满替换区域，允许居中裁切。
+- `@kvv` = 竖版 KV，cover 适配，铺满替换区域，允许居中裁切。
+
+产品名图片：
+
+- `@pnh-lg` / `@pnh-md` / `@pnh-sm` = 横版产品名，contain 适配，左对齐。
+- `@pnv-lg` / `@pnv-md` / `@pnv-sm` = 竖版产品名，contain 适配，居中对齐。
+
+商品图：
+
+- `@prod` = 商品图，后续实现，contain 适配。
+
+替换基准：
+
+- `@target` = 插件真正替换的位置和尺寸。
+- 如果没有 `@target`，插件会兼容寻找旧的 `current-image`。
+
 ## 产品名图片槽位
 
 产品名图片槽位不是按产品单独定尺寸，而是按图素版位定安全框。后续替换不同长宽比例的产品名图片时，应把图片等比适配进对应安全框。
@@ -111,11 +135,11 @@
 - 如果图片较长，则受最大宽度限制
 - 等价于 max-width + max-height 的安全框适配
 
-当前实现会优先递归查找槽位内部的 `@target`，如果没有 `@target`，再兼容寻找旧的 `current-image`。这个基准图层是唯一替换基准。竖版槽位和旧命名槽位会优先直接替换基准图层本身的图片填充；横版槽位为了保证左对齐，会基于基准图层创建等比适配的 `replaced-image`。
+图片替换会优先递归查找槽位内部的 `@target`，如果没有 `@target`，再兼容寻找旧的 `current-image`。这个基准图层是唯一替换基准。KV 会基于基准图层创建 cover 适配的 `replaced-image`；竖版产品名和旧命名槽位会优先直接替换基准图层本身的图片填充；横版产品名为了保证左对齐，会基于基准图层创建 contain 适配的 `replaced-image`。
 
-只有当居中槽位的基准图层无法直接设置图片填充时，插件才会在基准图层的同一父级创建新的可见图片矩形，名称为原槽位名称 + ` / replaced-image`。备用图层会基于 `@target` / `current-image` 的 x、y、width、height 做 contain 适配，不使用页面绝对坐标撑大父级组。
+插件会在同一个槽位内清理旧的 `/ replaced-image`，避免重复点击后多层叠加。新图层会基于 `@target` / `current-image` 的 x、y、width、height 放置，不使用页面绝对坐标撑大父级组。
 
-当前图片填充依据 `@mastergo/plugin-typings`：`mg.createImage(Uint8Array)` 返回 `Image`，图片引用使用 `image.href`，`ImagePaint` 使用 `imageRef` 字段并设置 `scaleMode: "FIT"`。
+当前图片填充依据 `@mastergo/plugin-typings`：`mg.createImage(Uint8Array)` 返回 `Image`，图片引用使用 `image.href`，`ImagePaint` 使用 `imageRef` 字段。产品名图片使用 `scaleMode: "FIT"`，KV 使用 `scaleMode: "FILL"`。
 
 推荐槽位结构：
 
@@ -219,6 +243,7 @@ dist/ui.html
 6. 填写产品名称、主标题、副标题、CTA 文案。
 7. 点击「替换文本内容」。
 8. 选择产品名图片，点击「替换产品名图片」。
+9. 选择横版 / 竖版 KV 图片，点击「替换 KV 图片」。
 
 插件不会改变原有画板尺寸，不会重新生成画板，不会删除或移动现有图层。
 
@@ -232,8 +257,8 @@ dist/ui.html
 ## 第一版限制
 
 - 先支持文字替换。
-- 图片替换第一版优先支持产品名图片槽位。
-- `@kvh`、`@kvv`、`@prod` 第一版仍只扫描统计，旧命名继续兼容。
+- 图片替换支持 KV 和产品名图片槽位。
+- `@prod` 第一版仍只扫描统计，旧命名 `@product-image` 继续兼容。
 - `@price` 第一版只扫描统计，暂不替换。
 - 需要设计师提前在 MasterGo 模板中给可替换图层命名。
 - 暂不发布到插件市场。

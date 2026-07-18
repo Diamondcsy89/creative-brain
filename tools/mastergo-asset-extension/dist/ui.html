@@ -169,9 +169,16 @@
         <label for="productNameImage">产品名图片上传 / 选择</label>
         <input id="productNameImage" type="file" accept=".png,.jpg,.jpeg,.svg,image/png,image/jpeg,image/svg+xml" />
 
+        <label for="kvHorizontalImage">横版 KV 图片上传</label>
+        <input id="kvHorizontalImage" type="file" accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp" />
+
+        <label for="kvVerticalImage">竖版 KV 图片上传</label>
+        <input id="kvVerticalImage" type="file" accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp" />
+
         <button id="scan" class="secondary">扫描模板图层</button>
         <button id="replace">替换文本内容</button>
         <button id="replaceImage" class="secondary">替换产品名图片</button>
+        <button id="replaceKv" class="secondary">替换 KV 图片</button>
 
         <p id="scanResult">扫描结果将在这里显示</p>
         <p id="status">等待操作</p>
@@ -213,7 +220,7 @@
       document.getElementById("replaceImage").addEventListener("click", async () => {
         try {
           resetStatus("已点击替换产品名图片");
-          const imagePayload = await collectImagePayload();
+          const imagePayload = await collectImagePayload("productNameImage", "产品名图片", true);
           sendPluginMessage({
             type: "replace-product-name-image",
             requestId: createRequestId("replace-image"),
@@ -222,6 +229,26 @@
           appendStatus("已发送产品名图片替换消息");
         } catch (error) {
           appendStatus(`产品名图片替换失败：${getErrorMessage(error)}`, true);
+        }
+      });
+
+      document.getElementById("replaceKv").addEventListener("click", async () => {
+        try {
+          resetStatus("已点击替换 KV 图片");
+          const horizontal = await collectImagePayload("kvHorizontalImage", "横版 KV", false);
+          const vertical = await collectImagePayload("kvVerticalImage", "竖版 KV", false);
+          if (!horizontal && !vertical) {
+            throw new Error("请至少选择一张横版或竖版 KV 图片");
+          }
+
+          sendPluginMessage({
+            type: "replace-kv-images",
+            requestId: createRequestId("replace-kv"),
+            payload: { horizontal, vertical }
+          });
+          appendStatus("已发送 KV 图片替换消息");
+        } catch (error) {
+          appendStatus(`KV 图片替换失败：${getErrorMessage(error)}`, true);
         }
       });
 
@@ -244,6 +271,11 @@
           renderImageReplaceResult(message.result);
         }
 
+        if (message.type === "kv-replace-result") {
+          appendStatus(message.message);
+          renderKvReplaceResult(message.result);
+        }
+
         if (message.type === "status") {
           appendStatus(message.message);
         }
@@ -263,14 +295,17 @@
         };
       }
 
-      async function collectImagePayload() {
-        const input = document.getElementById("productNameImage");
+      async function collectImagePayload(inputId, label, required) {
+        const input = document.getElementById(inputId);
         const file = input.files && input.files[0];
         if (!file) {
-          throw new Error("请先选择一张产品名图片");
+          if (required) {
+            throw new Error(`请先选择一张${label}`);
+          }
+          return null;
         }
 
-        appendStatus(`已选择文件：${file.name}`);
+        appendStatus(`已选择${label}：${file.name}`);
         const imageType = normalizeImageType(file.type, file.name);
         appendStatus(`原始 file.type：${file.type || "unknown"}`);
         appendStatus(`规范化 imageType：${imageType}`);
@@ -384,6 +419,21 @@
         ].join("\n") + notes + selectionHint;
       }
 
+      function renderKvReplaceResult(result) {
+        const notes = result.notes.length > 0 ? `\n\nKV 明细：\n${result.notes.slice(0, 10).join("\n")}` : "";
+        scanResultNode.textContent = [
+          `找到 @kvh / @kv-horizontal：${result.foundHorizontal}`,
+          `找到 @kvv / @kv-vertical：${result.foundVertical}`,
+          `成功替换横版 KV：${result.replacedHorizontal}`,
+          `成功替换竖版 KV：${result.replacedVertical}`,
+          `已清理旧 replaced-image：${result.cleaned}`,
+          `已隐藏旧 @target：${result.hidden}`,
+          `已跳过：${result.skipped}`,
+          "",
+          formatCounts(result.replacedByMarker, "KV 替换统计")
+        ].join("\n") + notes;
+      }
+
       function formatCounts(counts, title) {
         const lines = Object.keys(counts).map((key) => `${key}: ${counts[key]}`);
         return [title, ...lines].join("\n");
@@ -393,6 +443,9 @@
         window.parent.postMessage({ pluginMessage: message }, "*");
         if (message.type === "replace-product-name-image") {
           appendStatus("已发送图片数据");
+        }
+        if (message.type === "replace-kv-images") {
+          appendStatus("已发送 KV 图片数据");
         }
       }
 
